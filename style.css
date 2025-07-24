@@ -1,0 +1,277 @@
+/* style.css */
+
+/* 全体設定 */
+body {
+    font-family: 'Noto Sans JP', sans-serif;
+    margin: 0; /* bodyのmarginは0にリセット */
+    background-color: #FFFFFF; /* 白背景 */
+    min-height: 100vh; /* 画面いっぱいの高さを確保 */
+    display: flex; /* bodyをFlexコンテナに */
+    flex-direction: column; /* 子要素を縦方向に並べる */
+    align-items: center; /* 子要素（container, footer）を中央寄せ */
+    padding: 0; /* body自身のpaddingはここではなし。containerで調整 */
+}
+
+/* コンテンツ全体を中央に配置するラッパー */
+.container {
+    width: 100%; /* 親（body）の幅いっぱいに広げる */
+    max-width: 500px; /* コンテンツの最大幅を設定 */
+    padding: 20px; /* ★★★ 両端が切れないように内側に余白を設定 ★★★ */
+    box-sizing: border-box; /* paddingを含めてwidthを計算 */
+    flex-grow: 1; /* コンテンツが余白を占めるように（フッターを下に押しやる） */
+    text-align: center; /* 全体は中央揃えを維持 */
+}
+
+/* --- プロフィール関連 --- */
+.profile-area {
+    margin-bottom: 30px;
+}
+
+.profile-image {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #ddd;
+    margin-bottom: 10px;
+}
+
+.profile-name {
+    font-size: 1.8em;
+    font-weight: 700;
+    color: #333333;
+    margin: 10px 0 5px;
+}
+
+.profile-bio {
+    font-size: 1em;
+    color: #666666;
+    line-height: 1.5;
+}
+
+/* --- ソーシャルアイコン関連 --- */
+.social-icons {
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: center; /* flexアイテムを中央揃え */
+    gap: 15px; /* アイコン間の間隔 */
+}
+
+.social-icon-link img {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background-color: #000000;
+    padding: 5px;
+    box-sizing: border-box;
+    transition: transform 0.2s ease;
+}
+
+.social-icon-link img:hover {
+    transform: scale(1.1);
+}
+
+---
+
+### Category Title Section
+
+```css
+.category-section {
+    margin-bottom: 40px; /* Space between each category */
+    text-align: center; /* ★★★ Centering the category title ★★★ */
+}
+
+.category-title {
+    font-size: 1.5em;
+    font-weight: 400; /* Standard font-weight for the heading */
+    color: #333333;
+    margin-bottom: 20px;
+    position: relative;
+    display: inline-block; /* Maintained as inline-block for the underline */
+}
+
+.category-title::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -5px;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(to right, #FF0077, #FF8800);
+}
+
+.product-links {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Space between items */
+}
+
+.product-link-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; /* Individual item content remains left-aligned */
+    text-align: left; /* Text remains left-aligned */
+    padding: 15px 20px;
+    border-radius: 10px;
+    text-decoration: none;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: background 0.3s ease, transform 0.2s ease;
+
+    background: linear-gradient(to right, #FFB9B9, #FFFF69);
+    border: 1px solid #EAEAEA;
+    color: #333333;
+    width: 100%; /* Spans the full width of its parent */
+    box-sizing: border-box; /* Includes padding in width calculation */
+}
+
+.product-link-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.product-main-content {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.product-title-icon {
+    font-size: 2em;
+    margin-right: 15px;
+}
+
+.product-text-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.product-title {
+    font-size: 1.2em;
+    font-weight: 700;
+    color: #333333;
+    line-height: 1.3;
+}
+
+.product-description {
+    font-size: 0.9em;
+    color: #666666;
+    line-height: 1.3;
+    margin-top: 2px;
+}
+
+.product-meta-info {
+    font-size: 0.8em;
+    color: #999999;
+    margin-top: 10px;
+    width: 100%;
+    text-align: right; /* Remains right-aligned */
+}
+
+.link-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Space between buttons */
+}
+
+.link-button {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start; /* Individual button content remains left-aligned */
+    padding: 15px 20px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.1em;
+    transition: background 0.3s ease, transform 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+
+    background: linear-gradient(to right, #FF0077, #FF8800);
+    color: #FFFFFF;
+    border: none;
+    width: 100%; /* Spans the full width of its parent */
+    box-sizing: border-box; /* Includes padding in width calculation */
+}
+
+.link-button:hover {
+    background: linear-gradient(to right, #FF3399, #FF9933);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.button-icon {
+    margin-right: 15px;
+    font-size: 1.2em;
+}
+
+.nostr-embed-container {
+    margin-top: 20px;
+    width: 100%;
+    text-align: left; /* Content within the container remains left-aligned */
+}
+
+.footer-contact {
+    width: 100%;
+    max-width: 500px; /* Restricted to the same max-width as the content */
+    margin-top: 50px; /* Space from the content above */
+    padding: 20px; /* Inner padding for the footer */
+    box-sizing: border-box; /* Includes padding in width calculation */
+    text-align: center;
+    font-size: 0.9em;
+    color: #999999;
+    border-top: 1px solid #EAEAEA;
+}
+
+.footer-contact p {
+    margin: 5px 0;
+}
+
+.footer-contact .footer-link {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.footer-contact .footer-link:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+    /* body padding is adjusted by container, so reset here */
+    body {
+        padding: 0;
+    }
+    .container {
+        padding: 10px; /* Reduce inner padding slightly on mobile */
+        padding-bottom: 60px; /* Adjust container bottom padding to prevent footer overlap */
+    }
+    .profile-name {
+        font-size: 1.5em;
+    }
+    .profile-bio {
+        font-size: 0.9em;
+    }
+    .link-button,
+    .product-link-item {
+        font-size: 1em;
+        padding: 12px 15px;
+    }
+    .button-icon {
+        font-size: 1em;
+    }
+    .product-title-icon {
+        font-size: 1.8em;
+    }
+    .product-title {
+        font-size: 1.1em;
+    }
+    .product-description {
+        font-size: 0.85em;
+    }
+    .product-meta-info {
+        font-size: 0.75em;
+    }
+    .footer-contact {
+        margin-top: 30px;
+        padding: 15px; /* Adjust footer inner padding on mobile */
+        font-size: 0.8em;
+    }
+}
