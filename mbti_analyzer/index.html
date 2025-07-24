@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MBTI心理機能スタックアナライザー</title>
+    <meta name="google-site-verification" content="hkc1H33HDTncyLBjSf_RJvuupr70vSYr_LrHKm9gl9M" />
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1.1em;
+            box-sizing: border-box; /* パディングとボーダーを幅に含める */
+            max-width: 250px;
+            text-transform: uppercase; /* 入力を自動で大文字に */
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result-area {
+            margin-top: 30px;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            min-height: 60px; /* 結果表示エリアの最小高さを確保 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .result-area p {
+            margin: 5px 0;
+            font-size: 1.1em;
+            color: #444;
+        }
+        .error-message {
+            color: #d9534f;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MBTI心理機能スタックアナライザー</h1>
+
+        <div class="input-group">
+            <label for="mbtiInput">MBTIの4文字タイプを入力してください （例：INFP）</label>
+            <input type="text" id="mbtiInput" placeholder="例：INFP">
+            <button onclick="displayMbtiStack()">表示</button>
+        </div>
+
+        <div class="result-area" id="resultArea">
+            <p>ここに結果が表示されます。</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
