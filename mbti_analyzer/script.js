@@ -31,7 +31,7 @@ function getMbtiStack(mbtiType) {
     if (!validMbtiPattern.test(mbtiType)) {
         // タイプ一覧のHTMLを生成
         // ここを修正しました
-        let typeListHtml = '<p class="error-message">MBTIの4文字タイプを入力してください<br>タイプ一覧</p>';
+        let typeListHtml = '<p class="error-message">MBTIタイプの4文字を入力してください<br>タイプ一覧</p>';
         typeListHtml += '<table style="width:100%; border-collapse: collapse; margin-top: 15px;">';
         typeListHtml += '<thead><tr><th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f2f2f2;">タイプ</th><th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f2f2f2;">英語名称</th></tr></thead>';
         typeListHtml += '<tbody>';
