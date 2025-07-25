@@ -8,24 +8,31 @@
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 20px;
+            margin: 0;
             padding: 20px;
             background-color: #f4f7f6;
             color: #333;
             line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
         }
         .container {
             max-width: 600px;
+            width: 100%;
             margin: 0 auto;
             background-color: #fff;
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            box-sizing: border-box;
         }
         h1 {
             color: #2c3e50;
             text-align: center;
             margin-bottom: 30px;
+            font-size: 1.6em; /* 題字を少し小さく */
         }
         .input-group {
             margin-bottom: 20px;
@@ -43,9 +50,9 @@
             border: 1px solid #ddd;
             border-radius: 5px;
             font-size: 1.1em;
-            box-sizing: border-box; /* パディングとボーダーを幅に含める */
+            box-sizing: border-box;
             max-width: 250px;
-            text-transform: uppercase; /* 入力を自動で大文字に */
+            text-transform: uppercase;
         }
         button {
             background-color: #4CAF50;
@@ -66,20 +73,105 @@
             border: 1px solid #eee;
             border-radius: 5px;
             background-color: #f9f9f9;
-            min-height: 60px; /* 結果表示エリアの最小高さを確保 */
+            min-height: 60px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            text-align: center;
         }
         .result-area p {
             margin: 5px 0;
             font-size: 1.1em;
             color: #444;
         }
-        .error-message {
-            color: #d9534f;
+
+        /* テーブルコンテナのスタイル */
+        .hidden-content { /* このクラスがhiddenTableContainerに適用される */
+            display: none;
+            width: fit-content; /* テーブルのコンテンツに合わせて幅を調整 */
+            max-width: 100%; /* 親要素の幅を超えないようにする */
+            margin: 0 auto; /* 中央寄せ */
+            overflow-x: auto; /* ここで横スクロールを許可 */
+            -webkit-overflow-scrolling: touch; /* iOSでのスクロールをスムーズに */
+        }
+
+        /* MBTI functions table specific styles */
+        .mbti-functions-table {
+            width: auto; /* コンテンツに合わせて幅を自動調整 */
+            min-width: 300px; /* 最小幅を設定してスマホで潰れすぎないように */
+            border-collapse: collapse;
+            margin: 20px auto 0; /* 上下の余白と中央寄せ */
+            text-align: left;
+            border: 1px solid #ddd;
+            /* table-layoutはautoのまま維持 */
+        }
+
+        .mbti-functions-table th,
+        .mbti-functions-table td {
+            border: 1px solid #ddd;
+            padding: 8px 10px;
+            white-space: nowrap;
+            font-size: 1em; /* 文字サイズを少し大きく */
+            box-sizing: border-box;
+        }
+
+        /* ヘッダー行の背景色 */
+        .mbti-functions-table thead th {
+            background-color: #e8eff6;
             font-weight: bold;
+        }
+
+        /* 1列目のセルの背景色 */
+        .mbti-functions-table tbody td:first-child {
+            background-color: #e8eff6;
+        }
+
+        /* エラーメッセージのスタイル */
+        .error-message {
+            color: #555;
+            font-weight: normal;
+        }
+
+        .toggle-button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 15px;
+            transition: background-color 0.3s ease;
+        }
+
+        .toggle-button:hover {
+            background-color: #0056b3;
+        }
+
+        /* モバイルでの調整 */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 1.6em; /* モバイルでは題字をさらに調整 */
+            }
+            input[type="text"] {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            button {
+                width: 100%;
+            }
+            .mbti-functions-table th,
+            .mbti-functions-table td {
+                font-size: 0.9em; /* スマホでは文字を調整 */
+                padding: 6px 8px;
+            }
         }
     </style>
 </head>
@@ -90,12 +182,17 @@
         <div class="input-group">
             <label for="mbtiInput">MBTIタイプの4文字を入力してください （例：INFP）</label>
             <input type="text" id="mbtiInput" placeholder="例：INFP">
-            <button onclick="displayMbtiStack()">表示</button>
+            <button id="analyzeButton">表示</button>
         </div>
 
         <div class="result-area" id="resultArea">
             <p>ここに結果が表示されます。</p>
         </div>
+        <p style="font-size: 0.8em; color: #666; margin-top: 30px; text-align: center;">
+        このツールは、MBTIの概念に基づいています。
+        <br>MBTIは、専門家との対話を通じて「自分にとって最も腑に落ちる（Best-Fit）タイプ」を探し出す心理検査です。
+        <br>ウェブ上の一般的な簡易診断とは異なること、ご承知おきください。
+        </p>
     </div>
 
     <script src="script.js"></script>
