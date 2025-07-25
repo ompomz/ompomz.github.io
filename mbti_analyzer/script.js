@@ -1,13 +1,7 @@
-// script.js (エラーメッセージのテキスト修正)
-
 function getMbtiStack(mbtiType) {
-    mbtiType = mbtiType.toUpperCase(); // 大文字に変換
-
-    // 正しいMBTIタイプの正規表現
-    // 各文字がI/E, S/N, T/F, J/P のいずれかであることを厳密にチェック
+    mbtiType = mbtiType.toUpperCase();
     const validMbtiPattern = /^[IE][SN][TF][JP]$/;
 
-    // MBTIタイプと英語名称のデータ
     const mbtiTypesList = [
         { type: "ISTJ", name: "Logistician" },
         { type: "ISFJ", name: "Defender" },
@@ -20,126 +14,137 @@ function getMbtiStack(mbtiType) {
         { type: "ESTP", name: "Entrepreneur" },
         { type: "ESFP", name: "Entertainer" },
         { type: "ENFP", name: "Campaigner" },
-        { type: "ENTP", "name": "Debater" },
+        { type: "ENTP", name: "Debater" },
         { type: "ESTJ", name: "Executive" },
         { type: "ESFJ", name: "Consul" },
         { type: "ENFJ", name: "Protagonist" },
         { type: "ENTJ", name: "Commander" }
     ];
 
-    // 入力値のバリデーションを強化
     if (!validMbtiPattern.test(mbtiType)) {
-        // タイプ一覧のHTMLを生成
-        // ここを修正しました
-        let typeListHtml = '<p class="error-message">MBTIタイプの4文字を入力してください<br>タイプ一覧</p>';
-        typeListHtml += '<table style="width:100%; border-collapse: collapse; margin-top: 15px;">';
-        typeListHtml += '<thead><tr><th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f2f2f2;">タイプ</th><th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f2f2f2;">英語名称</th></tr></thead>';
+        let typeListHtml = '<p class="error-message">MBTIタイプの4文字を入力してください。<br>タイプ一覧</p>';
+        typeListHtml += '<table class="mbti-functions-table" style="max-width: 400px; margin: 15px auto; font-size: 1em;">';
+        typeListHtml += '<thead><tr><th>タイプ</th><th>英語名称</th></tr></thead>';
         typeListHtml += '<tbody>';
         mbtiTypesList.forEach(item => {
-            typeListHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px;">${item.type}</td><td style="border: 1px solid #ddd; padding: 8px;">${item.name}</td></tr>`;
+            typeListHtml += `<tr><td>${item.type}</td><td>${item.name}</td></tr>`;
         });
         typeListHtml += '</tbody></table>';
-
         return { error: typeListHtml };
     }
 
-    const e_i = mbtiType[0];
-    const s_n = mbtiType[1];
-    const t_f = mbtiType[2];
-    const j_p = mbtiType[3];
-
-    let dominantFunction = "";
-    let auxiliaryFunction = "";
-    let tertiaryFunction = "";
-    let inferiorFunction = "";
-
-    function determineFunction(funcType, attitude) {
-        return funcType + attitude;
-    }
-
-    function getOppositeFunctionType(funcType) {
-        switch (funcType) {
-            case 'S': return 'N';
-            case 'N': return 'S';
-            case 'T': return 'F';
-            case 'F': return 'T';
-            default: return '';
-        }
-    }
+    const [e_i, s_n, t_f, j_p] = mbtiType;
+    const isIntrovert = e_i === 'I';
+    const isJudging = j_p === 'J';
 
     function getFullFunctionName(func) {
-        const type = func[0];
-        const attitude = func[1];
-        let name = '';
-
-        if (type === 'F') name = '感情';
-        else if (type === 'T') name = '思考';
-        else if (type === 'N') name = '直観';
-        else if (type === 'S') name = '感覚';
-
-        if (attitude === 'i') name = '内向的' + name;
-        else if (attitude === 'e') name = '外向的' + name;
-
-        return name;
+        const typeMap = { 'F': '感情', 'T': '思考', 'N': '直観', 'S': '感覚' };
+        const attMap = { 'i': '内向的', 'e': '外向的' };
+        return `${attMap[func[1]]}${typeMap[func[0]]}`;
     }
 
-    if (e_i === 'I') {
-        if (j_p === 'J') {
-            dominantFunction = determineFunction(s_n, 'i');
-            auxiliaryFunction = determineFunction(t_f, 'e');
-        } else {
-            dominantFunction = determineFunction(t_f, 'i');
-            auxiliaryFunction = determineFunction(s_n, 'e');
-        }
+    function flipAttitude(attitude) {
+        return attitude === 'i' ? 'e' : 'i';
+    }
+
+    function getOppositeFuncType(type) {
+        return { 'T': 'F', 'F': 'T', 'S': 'N', 'N': 'S' }[type];
+    }
+
+    // 主・補助・第三・劣等
+    let dom, aux;
+    if (isIntrovert) {
+        dom = isJudging ? s_n + 'i' : t_f + 'i';
+        aux = isJudging ? t_f + 'e' : s_n + 'e';
     } else {
-        if (j_p === 'J') {
-            dominantFunction = determineFunction(t_f, 'e');
-            auxiliaryFunction = determineFunction(s_n, 'i');
-        } else {
-            dominantFunction = determineFunction(s_n, 'e');
-            auxiliaryFunction = determineFunction(t_f, 'i');
-        }
+        dom = isJudging ? t_f + 'e' : s_n + 'e';
+        aux = isJudging ? s_n + 'i' : t_f + 'i';
     }
 
-    const inferiorFunctionType = getOppositeFunctionType(dominantFunction[0]);
-    const inferiorAttitude = (dominantFunction[1] === 'e') ? 'i' : 'e';
-    inferiorFunction = determineFunction(inferiorFunctionType, inferiorAttitude);
+    const ter = getOppositeFuncType(aux[0]) + flipAttitude(aux[1]);
+    const inf = getOppositeFuncType(dom[0]) + flipAttitude(dom[1]);
 
-    const tertiaryFunctionType = getOppositeFunctionType(auxiliaryFunction[0]);
-    const tertiaryAttitude = (auxiliaryFunction[1] === 'e') ? 'i' : 'e';
-    tertiaryFunction = determineFunction(tertiaryFunctionType, tertiaryAttitude);
+    // 5～8番目の機能（主～劣等の外向/内向反転）
+    const nem = dom[0] + flipAttitude(dom[1]);
+    const cri = aux[0] + flipAttitude(aux[1]);
+    const tri = ter[0] + flipAttitude(ter[1]);
+    const dem = inf[0] + flipAttitude(inf[1]);
 
-    return {
-        stack: `${dominantFunction}-${auxiliaryFunction}-${tertiaryFunction}-${inferiorFunction}`,
-        details: {
-            dominant: { symbol: dominantFunction, name: getFullFunctionName(dominantFunction) },
-            auxiliary: { symbol: auxiliaryFunction, name: getFullFunctionName(auxiliaryFunction) },
-            tertiary: { symbol: tertiaryFunction, name: getFullFunctionName(tertiaryFunction) },
-            inferior: { symbol: inferiorFunction, name: getFullFunctionName(inferiorFunction) }
-        }
-    };
+    const stack = [
+        { role_jp: '主機能', symbol: dom, name_jp: getFullFunctionName(dom), role_en: 'Hero' },
+        { role_jp: '補助機能', symbol: aux, name_jp: getFullFunctionName(aux), role_en: 'Parent' },
+        { role_jp: '第三機能', symbol: ter, name_jp: getFullFunctionName(ter), role_en: 'Child' },
+        { role_jp: '劣等機能', symbol: inf, name_jp: getFullFunctionName(inf), role_en: 'Inferior' },
+        { role_jp: '第五機能', symbol: nem, name_jp: getFullFunctionName(nem), role_en: 'Nemesis' },
+        { role_jp: '第六機能', symbol: cri, name_jp: getFullFunctionName(cri), role_en: 'Critic' },
+        { role_jp: '第七機能', symbol: tri, name_jp: getFullFunctionName(tri), role_en: 'Trickster' },
+        { role_jp: '第八機能', symbol: dem, name_jp: getFullFunctionName(dem), role_en: 'Demon' }
+    ];
+
+    return { stack, mbtiType };
 }
 
 function displayMbtiStack() {
     const mbtiInput = document.getElementById('mbtiInput');
     const resultArea = document.getElementById('resultArea');
     const mbtiType = mbtiInput.value.trim();
-
     const result = getMbtiStack(mbtiType);
 
     if (result.error) {
-        // エラーメッセージとタイプ一覧をそのまま表示
         resultArea.innerHTML = result.error;
+        return;
+    }
+
+    let initialDisplayHtml = `
+        <p>入力されたタイプ：<strong>${result.mbtiType}</strong></p>
+        <p>心理機能スタック：<strong>${result.stack.slice(0, 4).map(f => f.symbol).join('-')}</strong></p>
+    `;
+
+    let tableRowsHtml = '';
+    result.stack.forEach((f) => {
+        tableRowsHtml += `
+            <tr>
+                <td>${f.role_jp}（${f.role_en}）</td>
+                <td>${f.symbol}</td>
+                <td>${f.name_jp}</td>
+            </tr>`;
+    });
+
+    // ここが変更点: ボタンをhiddenContentWrapperの外に出す
+    const tableHtml = `
+        <div id="hiddenTableContainer" class="hidden-content">
+            <table class="mbti-functions-table">
+                <thead>
+                    <tr><th>役割</th><th>心理機能</th><th>機能名称</th></tr>
+                </thead>
+                <tbody>
+                    ${tableRowsHtml}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    const buttonHtml = `<button id="toggleButton" class="toggle-button">もっと見る</button>`;
+
+
+    // resultAreaにすべてのHTMLを結合して設定
+    // initialDisplayHtml の後にボタン、その後に非表示のテーブルコンテナ
+    resultArea.innerHTML = initialDisplayHtml + buttonHtml + tableHtml;
+
+    const toggleButton = document.getElementById('toggleButton');
+    // テーブルだけを囲む新しいコンテナのID
+    const hiddenTableContainer = document.getElementById('hiddenTableContainer');
+
+    if (toggleButton && hiddenTableContainer) {
+        toggleButton.addEventListener('click', () => {
+            const isHidden = hiddenTableContainer.style.display === 'none' || hiddenTableContainer.style.display === '';
+            hiddenTableContainer.style.display = isHidden ? 'block' : 'none'; // block で表示
+
+            toggleButton.textContent = isHidden ? '隠す' : 'もっと見る';
+        });
     } else {
-        resultArea.innerHTML = `
-            <p>入力されたタイプ：<strong>${mbtiType.toUpperCase()}</strong></p>
-            <p>心理機能スタック：<strong>${result.stack}</strong></p>
-            <div style="margin-top: 20px; text-align: left;">
-                <p>主機能：${result.details.dominant.symbol}（${result.details.dominant.name}）</p>
-                <p>補助機能：${result.details.auxiliary.symbol}（${result.details.auxiliary.name}）</p>
-                <p>第三機能：${result.details.tertiary.symbol}（${result.details.tertiary.name}）</p>
-                <p>劣等機能：${result.details.inferior.symbol}（${result.details.inferior.name}）</p>
-            </div>
-        `;
+        console.error("Error: toggleButton or hiddenTableContainer not found after innerHTML update.");
     }
 }
+
+document.getElementById('analyzeButton').addEventListener('click', displayMbtiStack);
