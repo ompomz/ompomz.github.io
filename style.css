@@ -117,7 +117,7 @@ body {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     transition: background 0.3s ease, transform 0.2s ease;
 
-    background: linear-gradient(to right, #FFB9B9, #FFFF69);
+    background: linear-gradient(to right, #FFB9B9, #FFFF96);
     border: 1px solid #EAEAEA;
     color: #333333;
     width: 100%; /* Spans the full width of its parent */
