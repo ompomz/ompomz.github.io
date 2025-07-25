@@ -57,22 +57,27 @@
             <h2 class="category-title">Breathing Place</h2>
             <div class="link-buttons">
                 <a href="https://lumilumi.app/omks_hinori@ompomz.github.io" target="_blank" class="link-button">
-                    <span class="button-icon">🕊️</span> Nostr（open by Lumilumi）
+                    <span class="button-icon">🕊️</span> Nostr（open on Lumilumi）
                 </a>
                 </div><br>
             
             <div class="link-buttons">
-                <a href="https://open.spotify.com/user/dmfkshin" target="_blank" class="link-button">
-                    <span class="button-icon">📻</span> Playlists（open by Spotify）
+                <a href="https://open.spotify.com/playlist/3Bq5Gr5Ijiae6Awh0AxKfz" target="_blank" class="link-button">
+                    <span class="button-icon">📻</span> Playlists（open on Spotify）
                 </a>
                 </div><br>            
         </div>
 
         <div class="category-section">
-            <h2 class="category-title">Leatest tweets</h2>
+            <h2 class="category-title">Latest Tweets</h2>
             <div class="nostr-embed-container"> 
                 <nostr-list
                     filters='[{"kinds":[1],"authors":["a19caaa8404721584746fb0e174cf971a94e0f51baaf4c4e8c6e54fa88985eaf"],"limit":5}]'
+                    limit="5">
+                </nostr-list>
+                <br>
+                <nostr-list
+                    filters='[{"kinds":[1],"authors":["a19caaa8404721584746fb0e174cf971a94e0f51baaf4c4e8c6e54fa88985eaf"],"search":"youtu","limit":5}]'
                     limit="5">
                 </nostr-list>
                 <br>
