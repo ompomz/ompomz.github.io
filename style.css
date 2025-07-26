@@ -275,3 +275,12 @@ body {
         font-size: 0.8em;
     }
 }
+/* YouTube埋め込みプレイヤーのレスポンシブ対応 */
+.youtube-embed-player {
+    width: 100%; /* 親要素の幅いっぱいに広げる */
+    aspect-ratio: 16 / 9; /* 16:9の縦横比を維持 */
+    max-width: 560px; /* 必要に応じて最大幅を設定 */
+    height: auto; /* 高さは自動調整 */
+    display: block; /* ブロック要素にする */
+    margin: 10px 0; /* 上下の余白 */
+}
