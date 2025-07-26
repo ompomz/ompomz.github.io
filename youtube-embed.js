@@ -28,24 +28,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const convertYouTubeLinks = (container) => {
         // コンテナ内のすべてのリンク要素を探す
-        const links = container.querySelectorAll('a[href*="youtube.com/watch"], a[href*="youtu.be/"]');
+        // ここを修正: youtu.be の形式も追加
+        const links = container.querySelectorAll('a[href*="youtu.be/"], a[href*="youtube.com"], a[href*="http://googleusercontent.com/youtu.be/5"]');
 
         links.forEach(link => {
             const url = new URL(link.href);
             let videoId = '';
 
-            if (url.hostname.includes('youtube.com')) {
-                // youtube.com/watch?v=VIDEO_ID の形式
+            // youtu.be の形式 (v=パラメータ)
+            if (url.hostname.includes('youtu.be/VIDEO_ID')) {
                 const params = new URLSearchParams(url.search);
                 videoId = params.get('v');
-            } else if (url.hostname.includes('youtu.be')) {
-                // youtu.be/VIDEO_ID の形式
-                videoId = url.pathname.substring(1);
+            } 
+            // http://googleusercontent.com/youtu.be/8 の形式
+            else if (url.hostname.includes('http://googleusercontent.com/youtu.be/9')) {
+                videoId = url.pathname.substring(1); // パスから動画IDを取得
             }
 
             if (videoId) {
                 // YouTubeの埋め込みURLを生成
-                const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+                const embedUrl = `https://www.youtube.com/embed/$${videoId}`;
                 
                 // iframe要素を作成
                 const iframe = document.createElement('iframe');
@@ -54,18 +56,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
                 iframe.setAttribute('allowfullscreen', '');
                 iframe.classList.add('youtube-embed-player'); // スタイルを当てるためのクラスを追加
-
-                // 元のリンク要素をiframeに置き換える
-                // 親要素のテキストノードにリンクが含まれている場合を考慮
-                if (link.parentNode && link.parentNode.nodeType === Node.TEXT_NODE) {
-                    // テキストノードの中にリンクがある場合は、リンクのテキストを保持しつつiframeを挿入
-                    const span = document.createElement('span');
-                    span.textContent = link.textContent; // リンクのテキストを保持
-                    link.parentNode.replaceChild(iframe, link); // iframeでリンクを置き換え
-                    // iframeの直前に元のテキストも挿入することも考えられますが、
-                    // 今回はシンプルにiframeに置き換えます。
-                    // もし元のテキスト（動画タイトルなど）も表示したい場合は別途検討が必要です。
-                } else if (link.parentNode) {
+                
+                // iframeを挿入する前に、元のリンクのテキストを保持する場所を確保するか検討。
+                // 現状はシンプルにリンクをiframeに置き換えます。
+                // 親要素がテキストノードの場合に備えて、replaceChildの前に親要素の確認を追加
+                if (link.parentNode) {
+                    // リンク自体がテキストノードの子である可能性は低いが、念のため
+                    // link.replaceWith(iframe) を使っても良いが、古いブラウザとの互換性を考慮し replaceChild を使用
                     link.parentNode.replaceChild(iframe, link);
                 }
             }
