@@ -11,6 +11,7 @@
     <meta name="google-site-verification" content="hkc1H33HDTncyLBjSf_RJvuupr70vSYr_LrHKm9gl9M" />
     
     <link rel="stylesheet" href="style.css"> <script src="https://cdn.jsdelivr.net/npm/@konemono/nostr-web-components@latest/dist/nostr-web-components.iife.js"></script>
+    <script src="youtube-embed.js" defer></script>
 </head>
 <body>
     <div class="container">
@@ -19,8 +20,7 @@
             <h1 class="profile-name">ompomzlinks</h1>
             <p class="profile-bio">たゃです。何も分かりません。</p>
         </div>
-
-
+        
         <div class="category-section">
             <h2 class="category-title">Co-Creations with AI</h2>
             <div class="product-links">
@@ -33,7 +33,7 @@
                         </div>
                     </div>
                     <div class="product-meta-info">
-                        <span class="product-date">Last updated: 2025/07/23</span>
+                        <span class="product-date">Last updated: 2025/07/25</span>
                     </div>
                 </a>
 
@@ -57,36 +57,54 @@
             <h2 class="category-title">Breathing Place</h2>
             <div class="link-buttons">
                 <a href="https://lumilumi.app/omks_hinori@ompomz.github.io" target="_blank" class="link-button">
-                    <span class="button-icon">🕊️</span> Nostr（open on Lumilumi）
+                    <span class="button-icon">🕊️</span> Lumilumi
                 </a>
                 </div><br>
             
             <div class="link-buttons">
-                <a href="https://open.spotify.com/playlist/3Bq5Gr5Ijiae6Awh0AxKfz" target="_blank" class="link-button">
-                    <span class="button-icon">📻</span> Playlists（open on Spotify）
+                <a href="https://nostter.app/npub15xw242zqgus4s36xlv8pwn8ewx55ur63h2h5cn5vde204zyct6hs6kfn4n" target="_blank" class="link-button">
+                    <span class="button-icon">🐾</span> nostter
+                </a>
+                </div><br>
+            <div class="link-buttons">
+                <a href="https://nos-haiku.pages.dev/npub15xw242zqgus4s36xlv8pwn8ewx55ur63h2h5cn5vde204zyct6hs6kfn4n" target="_blank" class="link-button">
+                    <span class="button-icon">⭐</span> Nos Haiku
+                </a>
+                </div><br>
+            <div class="link-buttons">
+                <a href="https://njump.me/npub15xw242zqgus4s36xlv8pwn8ewx55ur63h2h5cn5vde204zyct6hs6kfn4n" target="_blank" class="link-button">
+                    <span class="button-icon">🚀</span> Njump
                 </a>
                 </div><br>            
         </div>
 
         <div class="category-section">
-            <h2 class="category-title">Latest Tweets</h2>
-            <div class="nostr-embed-container"> 
-                <nostr-list
-                    filters='[{"kinds":[1],"authors":["a19caaa8404721584746fb0e174cf971a94e0f51baaf4c4e8c6e54fa88985eaf"],"limit":5}]'
-                    limit="5">
-                </nostr-list>
-                <br>
-                <nostr-list
-                    filters='[{"kinds":[1],"authors":["a19caaa8404721584746fb0e174cf971a94e0f51baaf4c4e8c6e54fa88985eaf"],"search":"youtu","limit":5}]'
-                    limit="5">
-                </nostr-list>
-                <br>
-                <nostr-list
-                    filters='[{"kinds":[30023],"authors":["a19caaa8404721584746fb0e174cf971a94e0f51baaf4c4e8c6e54fa88985eaf"],"limit":2}]'
-                    limit="2">
-                </nostr-list>
-            </div>
-        </div>
+    <h2 class="category-title">Latest Tweets and More</h2>
+    <div class="nostr-embed-container">    
+        <p class="nostr-list-description">tweets</p> <nostr-list
+            filters='[{"kinds":[1],"authors":["a19caaa8404721584746fb0e174cf971a94e0f51baaf4c4e8c6e54fa88985eaf"],"limit":5}]'
+            limit="5">
+        </nostr-list>
+        <br>
+
+        <p class="nostr-list-description">fav</p> <nostr-list
+            filters='[{"kinds":[7],"authors":["a19caaa8404721584746fb0e174cf971a94e0f51baaf4c4e8c6e54fa88985eaf"],"limit":5}]'
+            limit="5">
+        </nostr-list>
+        <br>
+
+        <p class="nostr-list-description">shared youtube</p> <nostr-list
+            filters='[{"kinds":[1],"authors":["a19caaa8404721584746fb0e174cf971a94e0f51baaf4c4e8c6e54fa88985eaf"],"search":"youtu","limit":5}]'
+            limit="5">
+        </nostr-list>
+        <br>
+
+        <p class="nostr-list-description">long-form contents</p> <nostr-list
+            filters='[{"kinds":[30023],"authors":["a19caaa8404721584746fb0e174cf971a94e0f51baaf4c4e8c6e54fa88985eaf"],"limit":2}]'
+            limit="2">
+        </nostr-list>
+    </div>
+</div>
         
     </div> <footer class="footer-contact">
         <p>📩 <a href="https://note.com/omks_hinori/message" class="footer-link">Contact Form</a></p>
