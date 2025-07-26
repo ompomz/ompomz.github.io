@@ -74,5 +74,5 @@ document.addEventListener('DOMContentLoaded', () => {
     // 必要に応じて調整してください。
     setTimeout(() => {
         observeNostrContent();
-    }, 1000); // 1秒後にNostrコンポーネントの監視を開始
+    }, 5000); // 5秒後にNostrコンポーネントの監視を開始
 });
