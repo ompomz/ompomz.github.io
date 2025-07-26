@@ -284,3 +284,11 @@ body {
     display: block; /* ブロック要素にする */
     margin: 10px 0; /* 上下の余白 */
 }
+/* Nostrリストの説明文のスタイル */
+.nostr-list-description {
+    font-size: 0.9em; /* 少し小さめに */
+    color: #666; /* 少し薄めの色に */
+    margin-top: 15px; /* 上に少し余白 */
+    margin-bottom: 5px; /* 下に少し余白 */
+    font-weight: bold; /* 太字にするなど */
+}
