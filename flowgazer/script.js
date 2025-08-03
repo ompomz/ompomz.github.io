@@ -1,6 +1,9 @@
 // script.js の内容 (最終版)
+// window.NostrTools が定義されていない場合のための初期化
 window.NostrTools = window.NostrTools || {};
 window.NostrTools.nip19 = window.NostrTools.nip19 || {};
+window.NostrTools.nip05 = window.NostrTools.nip05 || {};
+window.NostrTools.nip21 = window.NostrTools.nip21 || {};
 
 // === ヘルパー関数群 (変更なし) ===
 String.prototype.padStart = String.prototype.padStart ? String.prototype.padStart : function(targetLength, padString) {
