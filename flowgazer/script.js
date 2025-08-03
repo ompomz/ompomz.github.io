@@ -1,4 +1,4 @@
-// script.js の内容 (修正版)
+// script.js の内容 (最終修正版)
 
 // === ヘルパー関数群 (変更なし) ===
 String.prototype.padStart = String.prototype.padStart ? String.prototype.padStart : function(targetLength, padString) {
@@ -367,9 +367,6 @@ let profileFetchTimeout = null;
 let isInitialLoad = false;
 let initialEvents = [];
 var autoUpdateCheckbox = document.getElementById("auto-update");
-var autoUpdateLabel = document.getElementById("auto-update-label");
-var showPendingPostsButton = document.getElementById("show-pending-posts");
-var pendingPosts = [];
 
 function clearTimeline() {
   while (timeline.firstChild) {
@@ -377,8 +374,6 @@ function clearTimeline() {
   }
   oldestCreatedAt = Number.MAX_VALUE;
   newestCreatedAt = 0;
-  pendingPosts = [];
-  showPendingPostsButton.style.display = 'none';
 }
 
 function scheduleProfileFetch() {
@@ -413,14 +408,9 @@ function onEvent(nostrEv, isFromMore = false) {
     }
     return;
   }
+  // 自動更新OFFで、かつタイムスタンプが最新より新しい場合は何もしない
   if (!autoUpdateCheckbox.checked && !isFromMore && nostrEv.created_at > newestCreatedAt) {
-    if (!pendingPosts.some(p => p.id === nostrEv.id)) {
-        pendingPosts.push(nostrEv);
-        pendingPosts.sort((a,b) => b.created_at - a.created_at);
-        showPendingPostsButton.textContent = `新着を表示 (${pendingPosts.length})`;
-        showPendingPostsButton.style.display = 'block';
-    }
-    return;
+      return;
   }
   let view;
   if (nostrEv.kind === 1) view = postEventView(nostrEv);
@@ -620,31 +610,22 @@ loadMoreButton.addEventListener("click", fetchMorePosts);
 
 autoUpdateCheckbox.addEventListener("change", function() {
   if (this.checked) {
-    autoUpdateLabel.textContent = "自動更新ON";
     console.log("自動更新ON. 新しいイベントの受信を開始します。");
     const newMainFilter = {
       kinds: [1, 6],
-      since: newestCreatedAt
+      since: newestCreatedAt + 1 // これがないと、自動更新をONにしたときに古い投稿が再び流れてくる可能性があります
     };
     if (currentPubkeyFilters.length > 0) {
       newMainFilter.authors = currentPubkeyFilters;
     }
+    // 古い購読を閉じて、新しい購読（sinceフィルター付き）を開始する
+    relayWS.send(JSON.stringify(["CLOSE", MAIN_SUB_ID]));
     relayWS.send(JSON.stringify(["REQ", MAIN_SUB_ID, newMainFilter]));
-    showPendingPostsButton.style.display = 'none';
-    pendingPosts = [];
   } else {
-    autoUpdateLabel.textContent = "自動更新OFF";
     console.log("自動更新OFF. 新しいイベントの受信を停止します。");
     if (relayWS && relayWS.readyState === WebSocket.OPEN) {
+      // 購読を一時的に停止する
       relayWS.send(JSON.stringify(["CLOSE", MAIN_SUB_ID]));
     }
-  }
-});
-
-showPendingPostsButton.addEventListener("click", function() {
-  if (pendingPosts.length > 0) {
-    pendingPosts.forEach(post => onEvent(post));
-    pendingPosts = [];
-    showPendingPostsButton.style.display = 'none';
   }
 });
