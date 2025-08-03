@@ -141,9 +141,14 @@ function urlLinkElems(url) {
 function extractEventRef(nip19Decoded) {
   switch (nip19Decoded.type) {
     case "nevent":
-      return { id: nip19Decoded.data.id, author: nip19Decoded.data.author };
+      return {
+        id: nip19Decoded.data.id,
+        author: nip19Decoded.data.author
+      };
     case "note":
-      return { id: nip19Decoded.data }
+      return {
+        id: nip19Decoded.data
+      }
     default:
       return undefined;
   }
@@ -158,10 +163,16 @@ function extractReplyRef(tags) {
       continue;
     }
     if (tag[3] === "reply" && typeof tag[1] === "string") {
-      return { id: tag[1], author: typeof tag[4] === "string" ? tag[4] : undefined };
+      return {
+        id: tag[1],
+        author: typeof tag[4] === "string" ? tag[4] : undefined
+      };
     }
     if (root === undefined && tag[3] === "root" && typeof tag[1] === "string") {
-      root = { id: tag[1], author: typeof tag[4] === "string" ? tag[4] : undefined };
+      root = {
+        id: tag[1],
+        author: typeof tag[4] === "string" ? tag[4] : undefined
+      };
     }
   }
   // no "reply" p-tag
@@ -404,6 +415,10 @@ var MORE_POSTS_SUB_ID = "motherfucking-more-posts-sub";
 const pubkeysToFetchProfile = new Set();
 let profileFetchTimeout = null;
 
+// 初回ロード時のイベントを一時的に格納するための変数
+let isInitialLoad = false;
+let initialEvents = [];
+
 function clearTimeline() {
   while (timeline.firstChild) {
     timeline.removeChild(timeline.firstChild);
@@ -510,7 +525,6 @@ function subscribeToRelay() {
 
   relayWS.addEventListener("open", function() {
     console.log("Connected to relay:", currentRelayUrl);
-    // メインの購読 (kind:1, 6)
     const mainFilter = {
       kinds: [1, 6],
       limit: 50
@@ -519,6 +533,8 @@ function subscribeToRelay() {
       mainFilter.authors = currentPubkeyFilters;
     }
     relayWS.send(JSON.stringify(["REQ", MAIN_SUB_ID, mainFilter]));
+    isInitialLoad = true;
+    initialEvents = [];
   });
 
   relayWS.addEventListener("message", function(ev) {
@@ -533,27 +549,34 @@ function subscribeToRelay() {
             return;
           }
 
-          // 「More」購読かどうか判定
           const isFromMore = (subId === MORE_POSTS_SUB_ID);
-          onEvent(nostrEv, isFromMore);
+
+          if (isInitialLoad && subId === MAIN_SUB_ID) {
+            initialEvents.push(nostrEv);
+          } else {
+            onEvent(nostrEv, isFromMore);
+          }
           break;
 
         case "EOSE":
           var subId = r2cMsg[1];
-          if (subId === MAIN_SUB_ID || subId === PROFILE_SUB_ID || subId === MORE_POSTS_SUB_ID) {
-            loadMoreButton.classList.remove("loading");
-            // EOSEが来たときに、初回購読のタイムスタンプを保存
-            if (subId === MAIN_SUB_ID) {
-              // 取得したイベントの中で最も新しいcreated_atをnewestCreatedAtに設定
-              // EOSEが来た時点で、その時点で取得したイベントの中で一番新しいもののcreated_atが最新とみなせる
-              // ここで新しいイベントがない場合newestCreatedAtは初期値0のまま
+          if (subId === MAIN_SUB_ID) {
+            if (isInitialLoad) {
+              initialEvents.sort((a, b) => b.created_at - a.created_at); // 新しい順にソート
+              initialEvents.forEach(nostrEv => {
+                onEvent(nostrEv, false);
+              });
+              isInitialLoad = false;
+              initialEvents = [];
               const firstChild = timeline.firstChild;
               if (firstChild) {
-                newestCreatedAt = nostrEv.created_at;
+                newestCreatedAt = parseInt(firstChild.getAttribute("data-timestamp"));
+                oldestCreatedAt = parseInt(timeline.lastChild.getAttribute("data-timestamp"));
               }
             }
-            // "More"ボタンの購読の場合は、購読完了後にCLOSEを送信する
-            // こうすることで、他の購読（MAIN, PROFILE）に影響を与えない
+          }
+          if (subId === MAIN_SUB_ID || subId === PROFILE_SUB_ID || subId === MORE_POSTS_SUB_ID) {
+            loadMoreButton.classList.remove("loading");
             if (subId === MORE_POSTS_SUB_ID) {
               relayWS.send(JSON.stringify(["CLOSE", MORE_POSTS_SUB_ID]));
             }
@@ -579,7 +602,6 @@ function subscribeToRelay() {
 
 function onWSClose() {
   console.log("Relay connection closed. Attempting to reconnect...");
-  // 接続が切れたら現在のフィルターで再接続を試みる
   setTimeout(subscribeToRelay, 5000);
 }
 
@@ -588,12 +610,12 @@ subscribeRelayButton.addEventListener("click", function() {
   subscribeToRelay(); // リレー接続・購読開始
 });
 
-// 「適用」ボタンのイベントリスナー修正（改行・スペース対応）
+// 「適用」ボタンのイベントリスナー
 applyPubkeyListButton.addEventListener("click", function() {
   var pubkeyString = pubkeyListInput.value.trim();
   if (pubkeyString) {
     var newPubkeys = pubkeyString
-      .split(/[\s,]+/) // ← ここが変更点：カンマ、改行、空白で分割
+      .split(/[\s,]+/)
       .map(p => p.trim())
       .filter(p => p.length === 64 && /^[0-9a-fA-F]+$/.test(p));
 
@@ -613,7 +635,6 @@ applyPubkeyListButton.addEventListener("click", function() {
 
 
 // 初期接続 (ページロード時)
-// このページが読み込まれたらすぐにリレーに接続する
 subscribeToRelay();
 
 
@@ -681,15 +702,13 @@ function fetchMorePosts() {
 loadMoreButton.addEventListener("click", fetchMorePosts);
 
 // 自動更新ON/OFFのチェックボックスのイベントリスナー
-// これがONになったときに新しい購読を開始し、OFFになったときに既存の購読を閉じる
 autoUpdateCheckbox.addEventListener("change", function() {
   if (this.checked) {
     console.log("自動更新ON. 新しいイベントの受信を開始します。");
-    // 新しい購読を開始
     const newMainFilter = {
       kinds: [1, 6],
       limit: 50,
-      since: newestCreatedAt + 1 // これまでに取得した最新のイベント以降を購読
+      since: newestCreatedAt + 1
     };
     if (currentPubkeyFilters.length > 0) {
       newMainFilter.authors = currentPubkeyFilters;
@@ -697,7 +716,6 @@ autoUpdateCheckbox.addEventListener("change", function() {
     relayWS.send(JSON.stringify(["REQ", MAIN_SUB_ID, newMainFilter]));
   } else {
     console.log("自動更新OFF. 新しいイベントの受信を停止します。");
-    // 既存の購読を閉じる (CLOSEメッセージを送信)
     if (relayWS && relayWS.readyState === WebSocket.OPEN) {
       relayWS.send(JSON.stringify(["CLOSE", MAIN_SUB_ID]));
     }
