@@ -1,4 +1,6 @@
-// script.js の内容 (最終修正版)
+// script.js の内容 (最終版)
+window.NostrTools = window.NostrTools || {};
+window.NostrTools.nip19 = window.NostrTools.nip19 || {};
 
 // === ヘルパー関数群 (変更なし) ===
 String.prototype.padStart = String.prototype.padStart ? String.prototype.padStart : function(targetLength, padString) {
@@ -17,10 +19,6 @@ String.prototype.padStart = String.prototype.padStart ? String.prototype.padStar
   }
   return pad + String(this).slice(0);
 };
-
-function getLanguage() {
-  return (window.navigator.language || window.navigator.browserLanguage || window.navigator.userLanguage).substring(0, 2);
-}
 
 function formatTimestamp(date) {
   return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0") + ":" + String(date.getSeconds()).padStart(2, "0");
@@ -613,18 +611,16 @@ autoUpdateCheckbox.addEventListener("change", function() {
     console.log("自動更新ON. 新しいイベントの受信を開始します。");
     const newMainFilter = {
       kinds: [1, 6],
-      since: newestCreatedAt + 1 // これがないと、自動更新をONにしたときに古い投稿が再び流れてくる可能性があります
+      since: newestCreatedAt + 1
     };
     if (currentPubkeyFilters.length > 0) {
       newMainFilter.authors = currentPubkeyFilters;
     }
-    // 古い購読を閉じて、新しい購読（sinceフィルター付き）を開始する
     relayWS.send(JSON.stringify(["CLOSE", MAIN_SUB_ID]));
     relayWS.send(JSON.stringify(["REQ", MAIN_SUB_ID, newMainFilter]));
   } else {
     console.log("自動更新OFF. 新しいイベントの受信を停止します。");
     if (relayWS && relayWS.readyState === WebSocket.OPEN) {
-      // 購読を一時的に停止する
       relayWS.send(JSON.stringify(["CLOSE", MAIN_SUB_ID]));
     }
   }
