@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>simple Nostr viewer - posts & reposts</title>
+  <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
+  <link rel="stylesheet" href="style.css"> </head>
+<body>
+  <h4>
+    This is using <a href="https://github.com/nostr-protocol/nostr" target="_blank" rel="noreferrer">Nostr</a> protocol.
+    
+  </h4>
+  <p>
+    And it's a little perfect, maybe.
+    Copied from <a href="https://jiftechnify.github.io/motherfucking-nostr-client/" target="_blank" rel="noreferrer">this amazing client</a>.
+  </p>
+
+  <hr />
+
+  <h4>kind:1,6</h4>
+  <div>
+    <label for="relay-url">Relay URL:</label>
+    <input id="relay-url" type="text" value="wss://r.kojira.io">
+    <button id="subscribe-relay">Connect Relay</button>
+  </div>
+  <br>
+  <div>
+    <h4>みたいひと（HEX形式、カンマ・スペース・改行で区切れる）</h4>
+    <p>なければ、ぜんぜん。<a href="https://heguro.github.io/nostr-following-list-util/" target="_blank" rel="noreferrer">NostrFlu</a>とかからもってきても。</p>
+    <textarea id="pubkey-list" rows="2" cols="50" placeholder="hex,hex,..."></textarea><br>
+    <button id="apply-pubkey-list">適用</button>
+  </div>
+  <div>
+  <label>
+    <input type="checkbox" id="auto-update" checked>
+    <span id="auto-update-label">自動更新ON</span>
+  </label>
+  <button type="button" id="show-pending-posts" style="display:none;">新着を表示</button>
+  </div>
+  <hr />
+  <h4>もし何か投稿したくなったら（入れるならどうなってもいいやつで）</h4>
+  <div>
+    <label for="nsec">秘密鍵（nsec）:</label>
+    <input id="nsec" type="password" placeholder="nsec1...">
+  </div>
+  <textarea id="new-post-content" rows="1" cols="50" autocomplete="off" placeholder="What the fuck is up?"></textarea>
+  <button id="send-new-post">Post</button>
+
+  <hr />
+
+  <ul id="timeline"></ul>
+
+  <button type="button" id="load-more" class="loading">More fuckin' posts please</button>
+
+  <script src="script.js"></script>
+</body>
+</html>
