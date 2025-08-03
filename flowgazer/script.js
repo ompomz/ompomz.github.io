@@ -457,8 +457,8 @@ function subscribeToRelay() {
       mainFilter.authors = currentPubkeyFilters;
     }
     relayWS.send(JSON.stringify(["REQ", MAIN_SUB_ID, mainFilter]));
-    isInitialLoad = true;
-    initialEvents = [];
+    isInitialLoad = true; // ここでフラグをリセット
+    initialEvents = [];   // ここでイベント配列をクリア
     loadMoreButton.classList.add("loading");
   });
 
@@ -549,6 +549,8 @@ applyPubkeyListButton.addEventListener("click", function() {
     currentPubkeyFilters = [];
     console.log("Subscribing all posts from relay.");
   }
+  
+  // 適用ボタンが押されたとき、リレーに再接続して購読をやり直す
   subscribeToRelay();
 });
 
