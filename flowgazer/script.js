@@ -393,13 +393,8 @@ function scheduleProfileFetch() {
   }, 100);
 }
 
-// onEvent 関数は直接DOM操作をしないように修正
+// onEvent 関数を修正
 function onEvent(nostrEv, isFromMore = false) {
-  if (isInitialLoad && !isFromMore) {
-    // 初期ロード中はイベントをバッファに貯めるだけ
-    initialEvents.push(nostrEv);
-    return;
-  }
   if (nostrEv.kind === 0) {
     try {
       const metadata = JSON.parse(nostrEv.content);
@@ -413,8 +408,16 @@ function onEvent(nostrEv, isFromMore = false) {
     } catch (e) {
       console.error("Failed to parse kind 0 content:", e);
     }
+    return; // kind:0の処理後はここで終了
+  }
+  
+  // 以降の処理はkind:1, 6などの投稿イベント向け
+  if (isInitialLoad && !isFromMore) {
+    // 初期ロード中はイベントをバッファに貯めるだけ
+    initialEvents.push(nostrEv);
     return;
   }
+  // 自動更新OFFで、かつタイムスタンプが最新より新しい場合は何もしない
   if (!autoUpdateCheckbox.checked && !isFromMore && nostrEv.created_at > newestCreatedAt) {
       return;
   }
@@ -436,7 +439,6 @@ function onEvent(nostrEv, isFromMore = false) {
     scheduleProfileFetch();
   }
 }
-
 
 function subscribeToRelay() {
   if (relayWS) {
