@@ -1,12 +1,10 @@
-// script.js の内容
+// script.js の内容 (修正版)
 
-// ヘルパー関数群 (一部変更あり)
+// === ヘルパー関数群 (変更なし) ===
 String.prototype.padStart = String.prototype.padStart ? String.prototype.padStart : function(targetLength, padString) {
   targetLength = Math.floor(targetLength) || 0;
   if (targetLength < this.length) return String(this);
-
   padString = padString ? String(padString) : " ";
-
   var pad = "";
   var len = targetLength - this.length;
   var i = 0;
@@ -57,19 +55,19 @@ function timestampView(unixtime) {
   var ts = new Date(unixtime * 1000);
   var timeElem = document.createElement("time");
   timeElem.setAttribute("datetime", ts.toISOString());
+  timeElem.setAttribute("data-timestamp", unixtime);
   timeElem.textContent = "[" + formatTimestamp(ts) + "]";
   return timeElem;
 }
 
-// === プロフィールキャッシュとpubkeyViewの変更 ===
-const profileCache = {}; // 公開鍵をキーとするプロフィール情報のキャッシュ
-const pubkeyElements = {}; // pubkeyViewが生成したHTML要素を保持するマップ
+const profileCache = {};
+const pubkeyElements = {};
 
 function getDisplayName(pubkey) {
   if (profileCache[pubkey] && profileCache[pubkey].name) {
     return profileCache[pubkey].name;
   }
-  return pubkey.substring(0, 8); // キャッシュになければHEXの短縮形
+  return pubkey.substring(0, 8);
 }
 
 function updatePubkeyView(pubkey) {
@@ -83,16 +81,13 @@ function updatePubkeyView(pubkey) {
 
 function pubkeyView(pubkey) {
   var npub = window.NostrTools.nip19.npubEncode(pubkey);
-  var displayName = getDisplayName(pubkey); // キャッシュから名前を取得
+  var displayName = getDisplayName(pubkey);
   var a = externalLink("https://njump.me/" + npub, displayName);
   a.classList.add("pubkey-ref");
-
-  // 要素をマップに保存し、後で更新できるようにする
   if (!pubkeyElements[pubkey]) {
     pubkeyElements[pubkey] = [];
   }
   pubkeyElements[pubkey].push(a);
-
   return a;
 }
 
@@ -127,9 +122,7 @@ function urlLinkElems(url) {
   var splitIdx = indexOfFirstUnmatchingCloseParen(url);
   var finalUrl = splitIdx === -1 ? url : url.substring(0, splitIdx);
   var rest = splitIdx === -1 ? "" : url.substring(splitIdx);
-
   var link = externalLink(finalUrl, finalUrl);
-
   if (rest.length === 0) {
     return [link];
   }
@@ -155,8 +148,7 @@ function extractEventRef(nip19Decoded) {
 }
 
 function extractReplyRef(tags) {
-  var root; // first "root" p-tag
-
+  var root;
   for (var i = 0; i < tags.length; i++) {
     var tag = tags[i];
     if (tag[0] !== "e") {
@@ -175,7 +167,6 @@ function extractReplyRef(tags) {
       };
     }
   }
-  // no "reply" p-tag
   return root;
 }
 
@@ -195,14 +186,9 @@ function nostrEventRefLink(nip19id, idType, hexEventId) {
 
 var lastHighlightedEventId;
 window.addEventListener("hashchange", function() {
-  if (window.location.hash.length === 0) {
-    return;
-  }
-
+  if (window.location.hash.length === 0) return;
   var hash = window.location.hash.substring(1);
-  if (hash.length === 0) {
-    return;
-  }
+  if (hash.length === 0) return;
   if (lastHighlightedEventId) {
     var highlighted = document.getElementById(lastHighlightedEventId);
     if (highlighted) {
@@ -210,9 +196,7 @@ window.addEventListener("hashchange", function() {
     }
   }
   var target = document.getElementById(hash);
-  if (!target) {
-    return;
-  }
+  if (!target) return;
   lastHighlightedEventId = hash;
   target.classList.add("event-highlighted");
 });
@@ -232,20 +216,13 @@ function referentAuthor(pubkey) {
 
 function inReplyToElems(nostrEv) {
   var replyRef = extractReplyRef(nostrEv.tags);
-  if (replyRef === undefined) {
-    return [];
-  }
-
+  if (replyRef === undefined) return [];
   var replySuffix = document.createElement("span");
   replySuffix.textContent = "<< ";
   replySuffix.classList.add("reply-suffix");
-
   var nevent = window.NostrTools.nip19.neventEncode(replyRef);
   var replyLink = nostrEventRefLink(nevent, "nevent", replyRef.id);
-
-  if (!replyRef.author) {
-    return [replyLink, replySuffix];
-  }
+  if (!replyRef.author) return [replyLink, replySuffix];
   return [replyLink, referentAuthor(replyRef.author), replySuffix];
 }
 
@@ -253,17 +230,13 @@ function postQuotationElems(nip19Id, idType, hexEventId, author) {
   var prefix = document.createElement("span");
   prefix.textContent = "QP: ";
   prefix.classList.add("quote-prefix");
-
   var link = nostrEventRefLink(nip19Id, idType, hexEventId);
-
-  if (!author) {
-    return [prefix, link];
-  }
+  if (!author) return [prefix, link];
   return [prefix, link, referentAuthor(author)];
 }
 
 function nostrUriElems(ref, nostrEv) {
-  var nip19Id = ref.substring(6); // trim "nostr:"
+  var nip19Id = ref.substring(6);
   var dec;
   try {
     dec = window.NostrTools.nip19.decode(nip19Id);
@@ -271,17 +244,15 @@ function nostrUriElems(ref, nostrEv) {
     console.error("failed to decode NIP-19 ID:", err);
     return [document.createTextNode(ref)];
   }
-
   switch (dec.type) {
     case "npub":
       return [pubkeyMention(dec.data)];
     case "nprofile":
       return [pubkeyMention(dec.data.pubkey)];
-
     case "note":
     case "nevent":
       var evRef = extractEventRef(dec);
-      if (ref === undefined) {
+      if (evRef === undefined) {
         console.error("unreachable");
         return [nostrRefLink(nip19Id, dec.type)];
       }
@@ -289,8 +260,7 @@ function nostrUriElems(ref, nostrEv) {
         t[3] === "mention"
       });
       var author = (mentionTag && mentionTag[4]) || evRef.author;
-      return postQuotationElems(nip19Id, dec.type, evRef.id, evRef.author);
-
+      return postQuotationElems(nip19Id, dec.type, evRef.id, author);
     default:
       return [nostrRefLink(nip19Id, dec.type)];
   }
@@ -307,7 +277,7 @@ function customEmojiElems(shortcode, nostrEv) {
       img.classList.add("custom-emoji");
       return [img];
     }
-    if (tag[0] === "name" && tag[1] === emojiName && typeof tag[2] === "string") { // NIP-30 (name tag)
+    if (tag[0] === "name" && tag[1] === emojiName && typeof tag[2] === "string") {
       var img = document.createElement('img');
       img.src = tag[2];
       img.alt = shortcode;
@@ -315,7 +285,6 @@ function customEmojiElems(shortcode, nostrEv) {
       return [img];
     }
   }
-  // no matching emoji found
   return [document.createTextNode(shortcode)];
 }
 
@@ -323,12 +292,10 @@ function postEventView(nostrEv) {
   var view = baseEventView();
   view.id = nostrEv.id;
   view.classList.add("event-post");
-
   view.appendChild(metadataView(nostrEv));
   inReplyToElems(nostrEv).forEach(function(e) {
     view.appendChild(e);
   });
-
   var contentElems = nostrEv.content.split(contentRefPattern)
     .filter(function(s) {
       return s !== undefined && s.length > 0;
@@ -358,66 +325,51 @@ function repostEventView(nostrEv) {
     if (tag[0] === "p" && typeof tag[1] === "string") {
       targetPostAuthor = tag[1];
     }
-    if (targetPostId && targetPostAuthor) {
-      break;
-    }
+    if (targetPostId && targetPostAuthor) break;
   }
   if (targetPostId === undefined) {
     console.error("repost without target post ID:", nostrEv);
     return undefined;
   }
-
   var view = baseEventView();
   view.classList.add("event-repost");
-
   view.appendChild(metadataView(nostrEv));
-
   var repostPrefix = document.createElement("span");
   repostPrefix.textContent = "RP: ";
   repostPrefix.classList.add("repost-prefix");
-
   var nevent = window.NostrTools.nip19.neventEncode({
     id: targetPostId
   });
   var repostLink = nostrEventRefLink(nevent, "nevent", targetPostId);
-
   view.appendChild(repostPrefix);
   view.appendChild(repostLink);
-  if (targetPostAuthor) {
-    view.appendChild(referentAuthor(targetPostAuthor));
-  }
+  if (targetPostAuthor) view.appendChild(referentAuthor(targetPostAuthor));
   return view;
 }
 
-
 // ==== メインのロジック部分 ====
 var timeline = document.getElementById("timeline");
-if (timeline === null) {
-  throw new Error("no #timeline");
-}
-
+if (timeline === null) throw new Error("no #timeline");
 var relayInput = document.getElementById("relay-url");
 var subscribeRelayButton = document.getElementById("subscribe-relay");
 var pubkeyListInput = document.getElementById("pubkey-list");
 var applyPubkeyListButton = document.getElementById("apply-pubkey-list");
-
 var relayWS;
 var oldestCreatedAt = Number.MAX_VALUE;
-var newestCreatedAt = 0; // 最新イベントのcreated_atを追跡
-var currentPubkeyFilters = []; // kind:1,6用
-var currentRelayUrl = relayInput.value; // 初期リレーURL
-
+var newestCreatedAt = 0;
+var currentPubkeyFilters = [];
+var currentRelayUrl = relayInput.value;
 var MAIN_SUB_ID = "motherfucking-main-sub";
 var PROFILE_SUB_ID = "motherfucking-profile-sub";
 var MORE_POSTS_SUB_ID = "motherfucking-more-posts-sub";
-
-// Kind:0を取得するためのpubkeyキュー
 const pubkeysToFetchProfile = new Set();
 let profileFetchTimeout = null;
-
-// 初回ロード時のイベントを一時的に格納するための変数
 let isInitialLoad = false;
 let initialEvents = [];
+var autoUpdateCheckbox = document.getElementById("auto-update");
+var autoUpdateLabel = document.getElementById("auto-update-label");
+var showPendingPostsButton = document.getElementById("show-pending-posts");
+var pendingPosts = [];
 
 function clearTimeline() {
   while (timeline.firstChild) {
@@ -425,18 +377,27 @@ function clearTimeline() {
   }
   oldestCreatedAt = Number.MAX_VALUE;
   newestCreatedAt = 0;
+  pendingPosts = [];
+  showPendingPostsButton.style.display = 'none';
 }
 
-// 自動更新のON/OFFチェックボックスの取得
-var autoUpdateCheckbox = document.getElementById("auto-update");
+function scheduleProfileFetch() {
+  if (profileFetchTimeout) clearTimeout(profileFetchTimeout);
+  profileFetchTimeout = setTimeout(() => {
+    if (pubkeysToFetchProfile.size > 0 && relayWS && relayWS.readyState === WebSocket.OPEN) {
+      const pubkeys = Array.from(pubkeysToFetchProfile);
+      console.log("Fetching profiles for:", pubkeys.length, "pubkeys");
+      relayWS.send(JSON.stringify(["REQ", PROFILE_SUB_ID, {
+        kinds: [0],
+        authors: pubkeys,
+        limit: pubkeys.length
+      }]));
+    }
+    profileFetchTimeout = null;
+  }, 100);
+}
 
-// イベント表示処理（ここに自動更新制御を追加）
 function onEvent(nostrEv, isFromMore = false) {
-  // 自動更新OFFで、かつ新しい投稿（タイムスタンプがnewestCreatedAtより大きい）は無視
-  if (!autoUpdateCheckbox.checked && !isFromMore && nostrEv.created_at > newestCreatedAt) {
-    return;
-  }
-
   if (nostrEv.kind === 0) {
     try {
       const metadata = JSON.parse(nostrEv.content);
@@ -452,69 +413,41 @@ function onEvent(nostrEv, isFromMore = false) {
     }
     return;
   }
-
-  let view;
-  if (nostrEv.kind === 1) {
-    view = postEventView(nostrEv);
-  } else if (nostrEv.kind === 6) {
-    view = repostEventView(nostrEv);
-  } else {
+  if (!autoUpdateCheckbox.checked && !isFromMore && nostrEv.created_at > newestCreatedAt) {
+    if (!pendingPosts.some(p => p.id === nostrEv.id)) {
+        pendingPosts.push(nostrEv);
+        pendingPosts.sort((a,b) => b.created_at - a.created_at);
+        showPendingPostsButton.textContent = `新着を表示 (${pendingPosts.length})`;
+        showPendingPostsButton.style.display = 'block';
+    }
     return;
   }
-
+  let view;
+  if (nostrEv.kind === 1) view = postEventView(nostrEv);
+  else if (nostrEv.kind === 6) view = repostEventView(nostrEv);
+  else return;
   if (!view) return;
   if (document.getElementById(nostrEv.id)) return;
-
-  // 新しいイベントをリストの先頭に追加
   if (isFromMore) {
-    // 「More」ボタンからのイベントは一番下に追加
     timeline.appendChild(view);
   } else {
-    // 新しいイベントはリストの一番上に追加
     timeline.prepend(view);
   }
-
-  // oldestCreatedAt と newestCreatedAt を更新
   oldestCreatedAt = Math.min(oldestCreatedAt, nostrEv.created_at);
   newestCreatedAt = Math.max(newestCreatedAt, nostrEv.created_at);
-
   if (!profileCache[nostrEv.pubkey] && !pubkeysToFetchProfile.has(nostrEv.pubkey)) {
     pubkeysToFetchProfile.add(nostrEv.pubkey);
     scheduleProfileFetch();
   }
 }
 
-// Kind:0 イベントをまとめてリクエストするスケジューラ
-function scheduleProfileFetch() {
-  if (profileFetchTimeout) {
-    clearTimeout(profileFetchTimeout);
-  }
-  profileFetchTimeout = setTimeout(() => {
-    if (pubkeysToFetchProfile.size > 0 && relayWS && relayWS.readyState === WebSocket.OPEN) {
-      const pubkeys = Array.from(pubkeysToFetchProfile);
-      console.log("Fetching profiles for:", pubkeys.length, "pubkeys");
-      relayWS.send(JSON.stringify(["REQ", PROFILE_SUB_ID, {
-        kinds: [0],
-        authors: pubkeys,
-        limit: pubkeys.length // 適切なリミットを設定
-      }]));
-      // 一度リクエストしたらキューはクリアしても良いが、
-      // リレーが全て返さない可能性も考慮し、onEventで個別に削除する
-    }
-    profileFetchTimeout = null;
-  }, 100); // 短い遅延でまとめてリクエスト
-}
-
-
 function subscribeToRelay() {
-  // 既存のWebSocket接続があれば閉じる
   if (relayWS) {
     relayWS.removeEventListener("close", onWSClose);
     relayWS.close();
   }
-  clearTimeline(); // タイムラインをクリア
-
-  currentRelayUrl = relayInput.value; // 最新のリレーURLを取得
+  clearTimeline();
+  currentRelayUrl = relayInput.value;
   try {
     relayWS = new WebSocket(currentRelayUrl);
   } catch (err) {
@@ -535,6 +468,7 @@ function subscribeToRelay() {
     relayWS.send(JSON.stringify(["REQ", MAIN_SUB_ID, mainFilter]));
     isInitialLoad = true;
     initialEvents = [];
+    loadMoreButton.classList.add("loading");
   });
 
   relayWS.addEventListener("message", function(ev) {
@@ -548,30 +482,28 @@ function subscribeToRelay() {
             console.error("nostr event with invalid signature:", nostrEv);
             return;
           }
-
           const isFromMore = (subId === MORE_POSTS_SUB_ID);
-
           if (isInitialLoad && subId === MAIN_SUB_ID) {
             initialEvents.push(nostrEv);
           } else {
             onEvent(nostrEv, isFromMore);
           }
           break;
-
         case "EOSE":
           var subId = r2cMsg[1];
           if (subId === MAIN_SUB_ID) {
             if (isInitialLoad) {
-              initialEvents.sort((a, b) => b.created_at - a.created_at); // 新しい順にソート
+              initialEvents.sort((a, b) => b.created_at - a.created_at);
               initialEvents.forEach(nostrEv => {
                 onEvent(nostrEv, false);
               });
               isInitialLoad = false;
               initialEvents = [];
               const firstChild = timeline.firstChild;
+              const lastChild = timeline.lastChild;
               if (firstChild) {
-                newestCreatedAt = parseInt(firstChild.getAttribute("data-timestamp"));
-                oldestCreatedAt = parseInt(timeline.lastChild.getAttribute("data-timestamp"));
+                  newestCreatedAt = parseInt(firstChild.querySelector('[data-timestamp]').getAttribute('data-timestamp'));
+                  oldestCreatedAt = parseInt(lastChild.querySelector('[data-timestamp]').getAttribute('data-timestamp'));
               }
             }
           }
@@ -582,9 +514,8 @@ function subscribeToRelay() {
             }
           }
           break;
-
         case "OK":
-          break; // NIP-20 OK メッセージ
+          break;
         case "NOTICE":
           console.warn("Relay Notice:", r2cMsg[1]);
           break;
@@ -601,16 +532,14 @@ function subscribeToRelay() {
 }
 
 function onWSClose() {
-  console.log("Relay connection closed. Attempting to reconnect...");
+  console.log("Relay connection closed. Attempting to reconnect in 5s...");
   setTimeout(subscribeToRelay, 5000);
 }
 
-// イベントリスナー
 subscribeRelayButton.addEventListener("click", function() {
-  subscribeToRelay(); // リレー接続・購読開始
+  subscribeToRelay();
 });
 
-// 「適用」ボタンのイベントリスナー
 applyPubkeyListButton.addEventListener("click", function() {
   var pubkeyString = pubkeyListInput.value.trim();
   if (pubkeyString) {
@@ -618,7 +547,6 @@ applyPubkeyListButton.addEventListener("click", function() {
       .split(/[\s,]+/)
       .map(p => p.trim())
       .filter(p => p.length === 64 && /^[0-9a-fA-F]+$/.test(p));
-
     if (newPubkeys.length > 0) {
       currentPubkeyFilters = newPubkeys;
       console.log("Subscribing posts for specific pubkeys:", currentPubkeyFilters);
@@ -633,12 +561,8 @@ applyPubkeyListButton.addEventListener("click", function() {
   subscribeToRelay();
 });
 
-
-// 初期接続 (ページロード時)
 subscribeToRelay();
 
-
-// create new post (変更なし)
 var nsecInput = document.getElementById("nsec");
 var postContentInput = document.getElementById("new-post-content");
 var sendPostButton = document.getElementById("send-new-post");
@@ -650,7 +574,6 @@ function sendNewPost() {
     alert("秘密鍵と内容を入力してください。");
     return;
   }
-
   try {
     var nsecDecoded = window.NostrTools.nip19.decode(nsec);
     if (nsecDecoded.type !== "nsec") {
@@ -658,7 +581,6 @@ function sendNewPost() {
       return;
     }
     var seckey = nsecDecoded.data;
-
     var post = {
       kind: 1,
       content: content,
@@ -667,7 +589,6 @@ function sendNewPost() {
     };
     var signedPost = window.NostrTools.finalizeEvent(post, seckey);
     relayWS.send(JSON.stringify(["EVENT", signedPost]));
-
     postContentInput.value = "";
     alert("投稿を送信しました。");
   } catch (err) {
@@ -677,8 +598,6 @@ function sendNewPost() {
 }
 sendPostButton.addEventListener("click", sendNewPost);
 
-
-// load more posts (フィルターを考慮して修正)
 var loadMoreButton = document.getElementById("load-more");
 
 function fetchMorePosts() {
@@ -687,7 +606,6 @@ function fetchMorePosts() {
     return;
   }
   loadMoreButton.classList.add("loading");
-
   const filter = {
     kinds: [1, 6],
     limit: 50,
@@ -698,26 +616,35 @@ function fetchMorePosts() {
   }
   relayWS.send(JSON.stringify(["REQ", MORE_POSTS_SUB_ID, filter]));
 }
-
 loadMoreButton.addEventListener("click", fetchMorePosts);
 
-// 自動更新ON/OFFのチェックボックスのイベントリスナー
 autoUpdateCheckbox.addEventListener("change", function() {
   if (this.checked) {
+    autoUpdateLabel.textContent = "自動更新ON";
     console.log("自動更新ON. 新しいイベントの受信を開始します。");
     const newMainFilter = {
       kinds: [1, 6],
-      limit: 50,
-      since: newestCreatedAt + 1
+      since: newestCreatedAt
     };
     if (currentPubkeyFilters.length > 0) {
       newMainFilter.authors = currentPubkeyFilters;
     }
     relayWS.send(JSON.stringify(["REQ", MAIN_SUB_ID, newMainFilter]));
+    showPendingPostsButton.style.display = 'none';
+    pendingPosts = [];
   } else {
+    autoUpdateLabel.textContent = "自動更新OFF";
     console.log("自動更新OFF. 新しいイベントの受信を停止します。");
     if (relayWS && relayWS.readyState === WebSocket.OPEN) {
       relayWS.send(JSON.stringify(["CLOSE", MAIN_SUB_ID]));
     }
+  }
+});
+
+showPendingPostsButton.addEventListener("click", function() {
+  if (pendingPosts.length > 0) {
+    pendingPosts.forEach(post => onEvent(post));
+    pendingPosts = [];
+    showPendingPostsButton.style.display = 'none';
   }
 });
