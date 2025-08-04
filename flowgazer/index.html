@@ -39,8 +39,9 @@
 
 /* ページ全体の基本的な設定 */
 body {
-    padding: 8px; 
+    padding: 8px;
     line-height: 1.4;
+    font-weight: normal; /* ページ全体の太字を通常の太さに設定 */
 }
 
 /* タイムラインのリストスタイル */
@@ -89,7 +90,7 @@ button#load-more.loading {
 
 /* 公開鍵の参照（名前）のスタイル */
 .pubkey-ref {
-    font-weight: bold;
+    font-weight: normal; /* 太字から通常へ変更 */
 }
 a.pubkey-ref {
     text-decoration: none;
@@ -109,15 +110,15 @@ img.custom-emoji {
     height: 24px;
     width: auto;
 }
- 
+
 /* 投稿内の特殊な要素のスタイル */
 span.reply-suffix {
-    font-weight: bold;
+    font-weight: normal; /* 太字から通常へ変更 */
 }
 span.repost-prefix,
 span.quote-prefix {
     font-style: italic;
-    font-weight: bold;
+    font-weight: normal; /* 太字から通常へ変更 */
 }
 </style>
 </head>
