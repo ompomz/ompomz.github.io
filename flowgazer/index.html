@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>viewer</title>
+  <title>flowgazer</title>
   <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
   <script>
     String.prototype.padStart = String.prototype.padStart ? String.prototype.padStart : function(targetLength, padString) {
@@ -122,9 +122,9 @@ span.quote-prefix {
 </style>
 </head>
 <body>
-<h4>This is a <a href="https://github.com/nostr-protocol/nostr" target="_blank" rel="noreferrer">Nostr</a> kind:1 viewer.
+<h4>This is a <a href="https://github.com/nostr-protocol/nostr" target="_blank" rel="noreferrer">Nostr</a> kind:1&6 viewer.
 </h4>
-<p>And it's a little perfect, maybe. Copied from <a href="https://jiftechnify.github.io/motherfucking-nostr-client/" target="_blank" rel="noreferrer">this amazing client</a>. View code on <a href="https://github.com" target="_blank" rel="noreferrer">GitHub</a>.
+<p>This is a little perfect, maybe. Copied from <a href="https://jiftechnify.github.io/motherfucking-nostr-client/" target="_blank" rel="noreferrer">this amazing client</a>. View code on <a href="https://github.com/ompomz/ompomz.github.io/blob/main/flowgazer/index.html" target="_blank" rel="noreferrer">GitHub</a>.
 </p>
 
 <div>
@@ -135,7 +135,7 @@ span.quote-prefix {
 <br>
 <div>
     <label for="hex-filter">投稿者pubkeyしぼりこみ（hex）</label>
-    <p>入れなくてもいいし、<a href="https://heguro.github.io/nostr-following-list-util/" target="_blank" rel="noreferrer">ここ</a>とかから持ってきても。</p>
+    <p>入れなくてもいいし、<a href="https://heguro.github.io/nostr-following-list-util/" target="_blank" rel="noreferrer">NostrFluさま</a>とかから持ってきてもいいかも</p>
     <textarea id="hex-filter" rows="3" cols="50" placeholder="pubkey1, pubkey2, ..."></textarea>
     <button id="apply-filter">Apply Filter</button>
 </div>
