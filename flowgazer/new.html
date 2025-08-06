@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nostr Client - to watch Reactions</title>
+  <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
+  <style>
+    html {
+      line-height: 1.4;
+      background-color: #fff;
+      color: #000;
+      font-weight: normal;
+      font-family: sans-serif;
+    }
+
+    ul#timeline {
+      padding-left: 0;
+    }
+
+    li.event {
+      list-style: none;
+      word-break: break-all;
+      border-bottom: 1px solid #eee;
+      padding: 8px 0;
+      font-weight: normal;
+    }
+
+    li.event.event-reaction {
+      background-color: #e0ffe0;
+      font-style: italic;
+    }
+
+    button#load-more.loading {
+      visibility: hidden;
+    }
+
+    .nostr-ref {
+      background-color: #f0f0f0;
+    }
+
+    .pubkey-ref {
+      font-weight: normal;
+      color: #888 !important;
+      text-decoration: none;
+    }
+
+    a.pubkey-ref:hover {
+      text-decoration: underline;
+    }
+
+    a {
+      color: #0000ff;
+    }
+
+    .original-post-preview {
+      margin-top: 5px;
+      padding: 8px;
+      background-color: #f0f0f0;
+      border-left: 3px solid #ccc;
+      font-size: 0.9em;
+      font-style: normal;
+      max-height: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .original-post-preview.loading {
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <h4>
+    This is a <a href="https://github.com/nostr-protocol/nostr" target="_blank" rel="noreferrer">Nostr</a> client. code can see here.→where?
+  </h4>
+  <p>照
+  </p>
+
+  <hr />
+
+  <h4>kind:7取得設定</h4>
+  <div>
+    <label for="relay-url">Relay URL:</label>
+    <input id="relay-url" type="text" value="wss://relay.nostr.band">
+    <button id="subscribe-relay">Connect Relay</button>
+  </div>
+  <br>
+  <div>
+    <label for="target-hex-pubkey">pubkey(HEX):</label><br>
+    <input id="target-hex-pubkey" type="text" placeholder="HEX公開鍵">
+    <button id="apply-pubkey-for-reactions">表示</button>
+  </div>
+
+  <hr />
+
+  <h4>元の投稿の取得設定</h4>
+  <div>
+    <label for="original-post-relay-url">Original Post Relay URL:</label>
+    <input id="original-post-relay-url" type="text" value="wss://relay.nostr.band">
+    <button id="connect-original-post-relay">Connect Original Post Relay</button>
+  </div>
+
+  <hr />
+
+  <ul id="timeline"></ul>
+
+  <button type="button" id="load-more" class="loading">More lovery reactions please</button>
+
+  <script>
+    // ヘルパー関数群
+    String.prototype.padStart = String.prototype.padStart ? String.prototype.padStart : function(targetLength, padString) {
+      targetLength = Math.floor(targetLength) || 0;
+      if (targetLength < this.length) return String(this);
+
+      padString = padString ? String(padString) : " ";
+
+      var pad = "";
+      var len = targetLength - this.length;
+      var i = 0;
+      while (pad.length < len) {
+        if (!padString[i]) {
+          i = 0;
+        }
+        pad += padString[i];
+        i++;
+      }
+      return pad + String(this).slice(0);
+    };
+
+    function getLanguage() {
+      return (window.navigator.language || window.navigator.browserLanguage || window.navigator.userLanguage).substring(0, 2);
+    }
+
+    function formatTimestamp(date) {
+      return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0") + ":" + String(date.getSeconds()).padStart(2, "0");
+    }
+
+    function findTagWithValue(tags, name, value, extraPred) {
+      for (var i = 0; i < tags.length; i++) {
+        var tag = tags[i];
+        if (tag[0] === name && tag[1] === value && (extraPred ? extraPred(tag) : true)) {
+          return tag;
+        }
+      }
+      return undefined;
+    }
+
+    function baseEventView() {
+      var li = document.createElement("li");
+      li.classList.add("event");
+      return li;
+    }
+
+    function externalLink(url, text) {
+      var a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noreferrer";
+      a.textContent = text;
+      return a;
+    }
+
+    function timestampView(unixtime) {
+      var ts = new Date(unixtime * 1000);
+      var timeElem = document.createElement("time");
+      timeElem.setAttribute("datetime", ts.toISOString());
+      timeElem.textContent = "[" + formatTimestamp(ts) + "]";
+      return timeElem;
+    }
+
+    const profileCache = {};
+    const pubkeyElements = {};
+
+    function getDisplayName(pubkey) {
+      if (profileCache[pubkey] && profileCache[pubkey].name) {
+        return profileCache[pubkey].name;
+      }
+      return pubkey.substring(0, 8);
+    }
+
+    function updatePubkeyView(pubkey) {
+      const displayName = getDisplayName(pubkey);
+      if (pubkeyElements[pubkey]) {
+        pubkeyElements[pubkey].forEach(elem => {
+          elem.textContent = displayName;
+        });
+      }
+    }
+
+    function pubkeyView(pubkey) {
+      var npub = window.NostrTools.nip19.npubEncode(pubkey);
+      var displayName = getDisplayName(pubkey);
+      var a = externalLink("https://njump.me/" + npub, displayName);
+      a.classList.add("pubkey-ref");
+
+      if (!pubkeyElements[pubkey]) {
+        pubkeyElements[pubkey] = [];
+      }
+      pubkeyElements[pubkey].push(a);
+
+      return a;
+    }
+
+    function metadataView(nostrEv) {
+      var view = document.createElement("span");
+      view.appendChild(timestampView(nostrEv.created_at));
+      view.appendChild(document.createTextNode(" "));
+      view.appendChild(pubkeyView(nostrEv.pubkey));
+      view.appendChild(document.createTextNode(" > "));
+      return view;
+    }
+
+    function customEmojiElems(shortcode, nostrEv) {
+      return [document.createTextNode(shortcode)];
+    }
+
+    const eventCache = {};
+    const eventsToFetch = new Set();
+    let eventFetchTimeout = null;
+
+    function fetchAndDisplayOriginalPost(reactedEventId) {
+      console.log("fetchAndDisplayOriginalPost started for ID:", reactedEventId.substring(0, 8));
+      if (eventCache[reactedEventId]) {
+        updateOriginalPostView(reactedEventId);
+        return;
+      }
+
+      if (!eventsToFetch.has(reactedEventId)) {
+        console.log("Adding event to fetch queue:", reactedEventId.substring(0, 8));
+        eventsToFetch.add(reactedEventId);
+        scheduleEventFetch();
+      }
+    }
+
+    function updateOriginalPostView(reactedEventId) {
+      const elementsToUpdate = document.querySelectorAll(`.original-post-preview[data-event-id="${reactedEventId}"]`);
+      elementsToUpdate.forEach(elem => {
+        const originalEvent = eventCache[reactedEventId];
+        if (originalEvent) {
+          elem.textContent = originalEvent.content.substring(0, 150) + (originalEvent.content.length > 150 ? '...' : '');
+          elem.classList.remove('loading');
+          elem.classList.remove('nostr-ref');
+        }
+      });
+    }
+
+
+    function scheduleEventFetch() {
+      if (eventFetchTimeout) {
+        clearTimeout(eventFetchTimeout);
+      }
+      eventFetchTimeout = setTimeout(() => {
+        if (eventsToFetch.size > 0 && originalPostWS && originalPostWS.readyState === WebSocket.OPEN) {
+          const eventIds = Array.from(eventsToFetch);
+          const subId = "FETCH_ORIGINAL_EVENTS_" + Date.now();
+          console.log("Fetching original events for:", eventIds.length, "events with SUB_ID:", subId, "from", originalPostRelayInput.value);
+          originalPostWS.send(JSON.stringify(["REQ", subId, {
+            ids: eventIds,
+            kinds: [1, 6],
+            limit: eventIds.length
+          }]));
+        }
+        eventFetchTimeout = null;
+      }, 100);
+    }
+
+    function reactionEventView(nostrEv) {
+      console.log("reactionEventView function called for event:", nostrEv.id);
+      var view = baseEventView();
+      view.id = nostrEv.id;
+      view.classList.add("event-reaction");
+
+      view.appendChild(metadataView(nostrEv));
+
+      var reactionContent = nostrEv.content;
+      if (reactionContent === "+") {
+        reactionContent = "♡";
+      } else if (reactionContent === "") {
+        reactionContent = "👍";
+      } else if (reactionContent === undefined) {
+        reactionContent = "👍";
+      }
+
+      var contentSpan = document.createElement("span");
+      contentSpan.textContent = " " + reactionContent + " ";
+      view.appendChild(contentSpan);
+
+      var reactedEventId;
+      for (var i = 0; i < nostrEv.tags.length; i++) {
+        var tag = nostrEv.tags[i];
+        if (tag[0] === "e" && typeof tag[1] === "string") {
+          reactedEventId = tag[1];
+          break;
+        }
+      }
+
+      if (reactedEventId) {
+        const nevent = window.NostrTools.nip19.neventEncode({
+          id: reactedEventId,
+          relays: [originalPostRelayInput.value]
+        });
+        const link = externalLink(`https://njump.me/${nevent}`, `元の投稿を見る`);
+        view.appendChild(document.createTextNode(" "));
+        view.appendChild(link);
+      }
+
+      const originalPostContainer = document.createElement('div');
+      originalPostContainer.classList.add('original-post-preview');
+      originalPostContainer.id = `original-post-${nostrEv.id}`;
+      originalPostContainer.setAttribute('data-event-id', reactedEventId);
+      view.appendChild(document.createElement('br'));
+      view.appendChild(originalPostContainer);
+
+      if (reactedEventId) {
+        originalPostContainer.textContent = `元の投稿を取得中... (nostr:${reactedEventId.substring(0, 8)}...)`;
+        originalPostContainer.classList.add('loading');
+        originalPostContainer.classList.add('nostr-ref');
+        fetchAndDisplayOriginalPost(reactedEventId);
+      } else {
+        originalPostContainer.textContent = "元の投稿が見つかりません。";
+        originalPostContainer.classList.add('nostr-ref');
+      }
+      return view;
+    }
+
+
+    var timeline = document.getElementById("timeline");
+    if (timeline === null) {
+      throw new Error("no #timeline");
+    }
+
+    var relayInput = document.getElementById("relay-url");
+    var subscribeRelayButton = document.getElementById("subscribe-relay");
+    var targetHexPubkeyInput = document.getElementById("target-hex-pubkey");
+    var applyPubkeyForReactionsButton = document.getElementById("apply-pubkey-for-reactions");
+
+    var originalPostRelayInput = document.getElementById("original-post-relay-url");
+    var connectOriginalPostRelayButton = document.getElementById("connect-original-post-relay");
+
+    var reactionWS;
+    var originalPostWS;
+
+    var oldestCreatedAt = Number.MAX_VALUE;
+    var currentTargetPubkeyForReactions = undefined;
+
+    var REACTION_SUB_ID = "motherfucking-reaction-sub";
+    var PROFILE_SUB_ID_REACTIONS = "motherfucking-profile-sub-reactions";
+    var MORE_REACTIONS_SUB_ID = "motherfucking-more-reactions-sub";
+
+
+    const pubkeysToFetchProfile = new Set();
+    let profileFetchTimeout = null;
+
+
+    function clearTimeline() {
+      while (timeline.firstChild) {
+        timeline.removeChild(timeline.firstChild);
+      }
+      oldestCreatedAt = Number.MAX_VALUE;
+    }
+
+    function onEvent(nostrEv) {
+    if (nostrEv.kind === 0) {
+        try {
+            const metadata = JSON.parse(nostrEv.content);
+            let name = metadata.name || nostrEv.pubkey.substring(0, 8);
+
+            const emojiRegex = /[\uD800-\uDBFF][\uDC00-\uDFFF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDF00-\uDFFF]|\uD83E[\uDF00-\uDFFF]/g;
+            name = name.replace(emojiRegex, '');
+
+            if (name.length > 8) {
+                name = name.substring(0, 8);
+            }
+
+            profileCache[nostrEv.pubkey] = {
+                name: name,
+                picture: metadata.picture,
+                about: metadata.about
+            };
+            updatePubkeyView(nostrEv.pubkey);
+            pubkeysToFetchProfile.delete(nostrEv.pubkey);
+        } catch (e) {
+            console.error("Failed to parse kind 0 content:", e);
+        }
+        return;
+    }
+
+    if (nostrEv.kind === 1 || nostrEv.kind === 6) {
+        eventCache[nostrEv.id] = nostrEv;
+        eventsToFetch.delete(nostrEv.id);
+        updateOriginalPostView(nostrEv.id);
+        return;
+    }
+
+    if (nostrEv.kind === 7) {
+        console.log("Received Kind 7 event:", nostrEv);
+        console.log("Tags of Kind 7 event:", nostrEv.tags);
+        if (document.getElementById(nostrEv.id)) {
+            return;
+        }
+        const newReactionView = reactionEventView(nostrEv);
+        timeline.appendChild(newReactionView);
+        oldestCreatedAt = Math.min(oldestCreatedAt, nostrEv.created_at);
+
+        if (!profileCache[nostrEv.pubkey] && !pubkeysToFetchProfile.has(nostrEv.pubkey)) {
+            pubkeysToFetchProfile.add(nostrEv.pubkey);
+            scheduleProfileFetch();
+        }
+    }
+}
+
+    function scheduleProfileFetch() {
+      if (profileFetchTimeout) {
+        clearTimeout(profileFetchTimeout);
+      }
+      profileFetchTimeout = setTimeout(() => {
+        if (pubkeysToFetchProfile.size > 0 && originalPostWS && originalPostWS.readyState === WebSocket.OPEN) {
+          const pubkeys = Array.from(pubkeysToFetchProfile);
+          const subId = "PROFILE_SUB_ID_REACTIONS_" + Date.now();
+          console.log("Fetching profiles for:", pubkeys.length, "pubkeys with SUB_ID:", subId, "from", originalPostRelayInput.value);
+          originalPostWS.send(JSON.stringify(["REQ", subId, {
+            kinds: [0],
+            authors: pubkeys,
+            limit: pubkeys.length
+          }]));
+        }
+        profileFetchTimeout = null;
+      }, 100);
+    }
+
+
+    function subscribeToReactionRelay() {
+      if (reactionWS) {
+        reactionWS.removeEventListener("close", onReactionWSClose);
+        reactionWS.close();
+      }
+      clearTimeline();
+
+      const currentReactionRelayUrl = relayInput.value;
+      try {
+        reactionWS = new WebSocket(currentReactionRelayUrl);
+      } catch (err) {
+        console.error("Failed to connect to reaction relay:", err);
+        alert("Failed to connect to reaction relay: " + currentReactionRelayUrl);
+        return;
+      }
+
+      reactionWS.addEventListener("open", function() {
+        console.log("Connected to reaction relay:", currentReactionRelayUrl);
+        if (currentTargetPubkeyForReactions) {
+          reactionWS.send(
+            JSON.stringify(["REQ", REACTION_SUB_ID, {
+              kinds: [7],
+              "#p": [currentTargetPubkeyForReactions],
+              limit: 50
+            }])
+          );
+        } else {
+          loadMoreButton.classList.remove("loading");
+        }
+      });
+
+      reactionWS.addEventListener("message", function(ev) {
+        try {
+          var r2cMsg = JSON.parse(ev.data);
+          switch (r2cMsg[0]) {
+            case "EVENT":
+              var nostrEv = r2cMsg[2];
+              if (!window.NostrTools.verifyEvent(nostrEv)) {
+                console.error("nostr event with invalid signature:", nostrEv);
+                return;
+              }
+              onEvent(nostrEv);
+              break;
+
+            case "EOSE":
+              if (r2cMsg[1] === REACTION_SUB_ID || r2cMsg[1] === MORE_REACTIONS_SUB_ID) {
+                loadMoreButton.classList.remove("loading");
+              }
+              break;
+
+            case "OK":
+              break;
+            case "NOTICE":
+              console.warn("Reaction Relay Notice:", r2cMsg[1]);
+              break;
+            default:
+              console.log(r2cMsg);
+              break;
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      });
+
+      reactionWS.addEventListener("close", onReactionWSClose);
+    }
+
+    function onReactionWSClose() {
+      console.log("Reaction Relay connection closed. Attempting to reconnect...");
+      setTimeout(subscribeToReactionRelay, 5000);
+    }
+
+
+    function connectOriginalPostRelay() {
+      if (originalPostWS) {
+        originalPostWS.removeEventListener("close", onOriginalPostWSClose);
+        originalPostWS.close();
+      }
+
+      const currentOriginalPostRelayUrl = originalPostRelayInput.value;
+      try {
+        originalPostWS = new WebSocket(currentOriginalPostRelayUrl);
+      } catch (err) {
+        console.error("Failed to connect to original post relay:", err);
+        alert("Failed to connect to original post relay: " + currentOriginalPostRelayUrl);
+        return;
+      }
+
+      originalPostWS.addEventListener("open", function() {
+        console.log("Connected to original post relay:", currentOriginalPostRelayUrl);
+        if (eventsToFetch.size > 0) {
+          scheduleEventFetch();
+        }
+        if (pubkeysToFetchProfile.size > 0) {
+          scheduleProfileFetch();
+        }
+      });
+
+      originalPostWS.addEventListener("message", function(ev) {
+        try {
+          var r2cMsg = JSON.parse(ev.data);
+          switch (r2cMsg[0]) {
+            case "EVENT":
+              var nostrEv = r2cMsg[2];
+              if (!window.NostrTools.verifyEvent(nostrEv)) {
+                console.error("nostr event with invalid signature:", nostrEv);
+                return;
+              }
+              onEvent(nostrEv);
+              break;
+
+            case "EOSE":
+              break;
+
+            case "OK":
+              break;
+            case "NOTICE":
+              console.warn("Original Post Relay Notice:", r2cMsg[1]);
+              break;
+            default:
+              console.log(r2cMsg);
+              break;
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      });
+
+      originalPostWS.addEventListener("close", onOriginalPostWSClose);
+    }
+
+    function onOriginalPostWSClose() {
+      console.log("Original Post Relay connection closed. Attempting to reconnect...");
+      setTimeout(connectOriginalPostRelay, 5000);
+    }
+
+
+    subscribeRelayButton.addEventListener("click", function() {
+      subscribeToReactionRelay();
+    });
+
+    applyPubkeyForReactionsButton.addEventListener("click", function() {
+      var hexPubkey = targetHexPubkeyInput.value.trim();
+      if (hexPubkey.length === 64 && /^[0-9a-fA-F]+$/.test(hexPubkey)) {
+        currentTargetPubkeyForReactions = hexPubkey;
+        console.log("Subscribing reactions for pubkey:", currentTargetPubkeyForReactions);
+
+        connectOriginalPostRelay();
+
+        subscribeToReactionRelay();
+      } else {
+        alert("有効なHEX公開鍵を入力してください。");
+        currentTargetPubkeyForReactions = undefined;
+        clearTimeline();
+      }
+    });
+
+    connectOriginalPostRelayButton.addEventListener("click", function() {
+      connectOriginalPostRelay();
+    });
+
+
+    var loadMoreButton = document.getElementById("load-more");
+
+    function fetchMoreReactions() {
+      if (!reactionWS || reactionWS.readyState !== WebSocket.OPEN || !currentTargetPubkeyForReactions) {
+        console.warn("Reaction Relay not connected or no target pubkey set.");
+        return;
+      }
+      loadMoreButton.classList.add("loading");
+
+      const filter = {
+        kinds: [7],
+        limit: 50,
+        until: oldestCreatedAt - 1,
+        "#p": [currentTargetPubkeyForReactions]
+      };
+      reactionWS.send(JSON.stringify(["REQ", MORE_REACTIONS_SUB_ID, filter]));
+    }
+    loadMoreButton.addEventListener("click", fetchMoreReactions);
+
+    document.addEventListener("DOMContentLoaded", function() {
+    });
+  </script>
+</body>
+</html>
