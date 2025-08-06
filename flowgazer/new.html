@@ -70,9 +70,6 @@ label, input, button, textarea {
 }
 
 /* 投稿の種類ごとのスタイル */
-li.event.event-repost {
-    background-color: hsl(130, 100%, 95%);
-}
 li.event.event-highlighted {
     background-color: hsl(55, 100%, 93%);
     border: 1px dotted #000;
@@ -194,9 +191,11 @@ span.quote-prefix {
       var npub = window.NostrTools.nip19.npubEncode(pubkey);
       var displayName = profiles[pubkey] && profiles[pubkey].name ? profiles[pubkey].name : pubkey.substring(0, 8);
       var sanitizedName = displayName.replace(/\p{Emoji_Presentation}/gu, "");
-        if (sanitizedName.length > 8) {
+        if (sanitizedName.length === 0) {
+            sanitizedName = pubkey.substring(0, 8);
+        } else if (sanitizedName.length > 8) {
             sanitizedName = sanitizedName.substring(0, 8);
-          }
+        }
       var a = externalLink("https://njump.me/" + npub, sanitizedName);
           a.classList.add("pubkey-ref");
           
