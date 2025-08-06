@@ -1,618 +1,834 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nostr Client - to watch Reactions</title>
-  <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
-  <style>
-    html {
-      line-height: 1.4;
-      background-color: #fff;
-      color: #000;
-      font-weight: normal;
-      font-family: sans-serif;
-    }
-
-    ul#timeline {
-      padding-left: 0;
-    }
-
-    li.event {
-      list-style: none;
-      word-break: break-all;
-      border-bottom: 1px solid #eee;
-      padding: 8px 0;
-      font-weight: normal;
-    }
-
-    li.event.event-reaction {
-      background-color: #e0ffe0;
-      font-style: italic;
-    }
-
-    button#load-more.loading {
-      visibility: hidden;
-    }
-
-    .nostr-ref {
-      background-color: #f0f0f0;
-    }
-
-    .pubkey-ref {
-      font-weight: normal;
-      color: #888 !important;
-      text-decoration: none;
-    }
-
-    a.pubkey-ref:hover {
-      text-decoration: underline;
-    }
-
-    a {
-      color: #0000ff;
-    }
-
-    .original-post-preview {
-      margin-top: 5px;
-      padding: 8px;
-      background-color: #f0f0f0;
-      border-left: 3px solid #ccc;
-      font-size: 0.9em;
-      font-style: normal;
-      max-height: 100px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .original-post-preview.loading {
-      color: #888;
-    }
-  </style>
-</head>
-<body>
-  <h4>
-    This is a <a href="https://github.com/nostr-protocol/nostr" target="_blank" rel="noreferrer">Nostr</a> client. code can see here.→where?
-  </h4>
-  <p>照
-  </p>
-
-  <hr />
-
-  <h4>kind:7取得設定</h4>
-  <div>
-    <label for="relay-url">Relay URL:</label>
-    <input id="relay-url" type="text" value="wss://relay.nostr.band">
-    <button id="subscribe-relay">Connect Relay</button>
-  </div>
-  <br>
-  <div>
-    <label for="target-hex-pubkey">pubkey(HEX):</label><br>
-    <input id="target-hex-pubkey" type="text" placeholder="HEX公開鍵">
-    <button id="apply-pubkey-for-reactions">表示</button>
-  </div>
-
-  <hr />
-
-  <h4>元の投稿の取得設定</h4>
-  <div>
-    <label for="original-post-relay-url">Original Post Relay URL:</label>
-    <input id="original-post-relay-url" type="text" value="wss://relay.nostr.band">
-    <button id="connect-original-post-relay">Connect Original Post Relay</button>
-  </div>
-
-  <hr />
-
-  <ul id="timeline"></ul>
-
-  <button type="button" id="load-more" class="loading">More lovery reactions please</button>
-
-  <script>
-    // ヘルパー関数群
-    String.prototype.padStart = String.prototype.padStart ? String.prototype.padStart : function(targetLength, padString) {
-      targetLength = Math.floor(targetLength) || 0;
-      if (targetLength < this.length) return String(this);
-
-      padString = padString ? String(padString) : " ";
-
-      var pad = "";
-      var len = targetLength - this.length;
-      var i = 0;
-      while (pad.length < len) {
-        if (!padString[i]) {
-          i = 0;
-        }
-        pad += padString[i];
-        i++;
-      }
-      return pad + String(this).slice(0);
-    };
-
-    function getLanguage() {
-      return (window.navigator.language || window.navigator.browserLanguage || window.navigator.userLanguage).substring(0, 2);
-    }
-
-    function formatTimestamp(date) {
-      return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0") + ":" + String(date.getSeconds()).padStart(2, "0");
-    }
-
-    function findTagWithValue(tags, name, value, extraPred) {
-      for (var i = 0; i < tags.length; i++) {
-        var tag = tags[i];
-        if (tag[0] === name && tag[1] === value && (extraPred ? extraPred(tag) : true)) {
-          return tag;
-        }
-      }
-      return undefined;
-    }
-
-    function baseEventView() {
-      var li = document.createElement("li");
-      li.classList.add("event");
-      return li;
-    }
-
-    function externalLink(url, text) {
-      var a = document.createElement("a");
-      a.href = url;
-      a.target = "_blank";
-      a.rel = "noreferrer";
-      a.textContent = text;
-      return a;
-    }
-
-    function timestampView(unixtime) {
-      var ts = new Date(unixtime * 1000);
-      var timeElem = document.createElement("time");
-      timeElem.setAttribute("datetime", ts.toISOString());
-      timeElem.textContent = "[" + formatTimestamp(ts) + "]";
-      return timeElem;
-    }
-
-    const profileCache = {};
-    const pubkeyElements = {};
-
-    function getDisplayName(pubkey) {
-      if (profileCache[pubkey] && profileCache[pubkey].name) {
-        return profileCache[pubkey].name;
-      }
-      return pubkey.substring(0, 8);
-    }
-
-    function updatePubkeyView(pubkey) {
-      const displayName = getDisplayName(pubkey);
-      if (pubkeyElements[pubkey]) {
-        pubkeyElements[pubkey].forEach(elem => {
-          elem.textContent = displayName;
-        });
-      }
-    }
-
-    function pubkeyView(pubkey) {
-      var npub = window.NostrTools.nip19.npubEncode(pubkey);
-      var displayName = getDisplayName(pubkey);
-      var a = externalLink("https://njump.me/" + npub, displayName);
-      a.classList.add("pubkey-ref");
-
-      if (!pubkeyElements[pubkey]) {
-        pubkeyElements[pubkey] = [];
-      }
-      pubkeyElements[pubkey].push(a);
-
-      return a;
-    }
-
-    function metadataView(nostrEv) {
-      var view = document.createElement("span");
-      view.appendChild(timestampView(nostrEv.created_at));
-      view.appendChild(document.createTextNode(" "));
-      view.appendChild(pubkeyView(nostrEv.pubkey));
-      view.appendChild(document.createTextNode(" > "));
-      return view;
-    }
-
-    function customEmojiElems(shortcode, nostrEv) {
-      return [document.createTextNode(shortcode)];
-    }
-
-    const eventCache = {};
-    const eventsToFetch = new Set();
-    let eventFetchTimeout = null;
-
-    function fetchAndDisplayOriginalPost(reactedEventId) {
-      console.log("fetchAndDisplayOriginalPost started for ID:", reactedEventId.substring(0, 8));
-      if (eventCache[reactedEventId]) {
-        updateOriginalPostView(reactedEventId);
-        return;
-      }
-
-      if (!eventsToFetch.has(reactedEventId)) {
-        console.log("Adding event to fetch queue:", reactedEventId.substring(0, 8));
-        eventsToFetch.add(reactedEventId);
-        scheduleEventFetch();
-      }
-    }
-
-    function updateOriginalPostView(reactedEventId) {
-      const elementsToUpdate = document.querySelectorAll(`.original-post-preview[data-event-id="${reactedEventId}"]`);
-      elementsToUpdate.forEach(elem => {
-        const originalEvent = eventCache[reactedEventId];
-        if (originalEvent) {
-          elem.textContent = originalEvent.content.substring(0, 150) + (originalEvent.content.length > 150 ? '...' : '');
-          elem.classList.remove('loading');
-          elem.classList.remove('nostr-ref');
-        }
-      });
-    }
-
-
-    function scheduleEventFetch() {
-      if (eventFetchTimeout) {
-        clearTimeout(eventFetchTimeout);
-      }
-      eventFetchTimeout = setTimeout(() => {
-        if (eventsToFetch.size > 0 && originalPostWS && originalPostWS.readyState === WebSocket.OPEN) {
-          const eventIds = Array.from(eventsToFetch);
-          const subId = "FETCH_ORIGINAL_EVENTS_" + Date.now();
-          console.log("Fetching original events for:", eventIds.length, "events with SUB_ID:", subId, "from", originalPostRelayInput.value);
-          originalPostWS.send(JSON.stringify(["REQ", subId, {
-            ids: eventIds,
-            kinds: [1, 6],
-            limit: eventIds.length
-          }]));
-        }
-        eventFetchTimeout = null;
-      }, 100);
-    }
-
-    function reactionEventView(nostrEv) {
-      console.log("reactionEventView function called for event:", nostrEv.id);
-      var view = baseEventView();
-      view.id = nostrEv.id;
-      view.classList.add("event-reaction");
-
-      view.appendChild(metadataView(nostrEv));
-
-      var reactionContent = nostrEv.content;
-      if (reactionContent === "+") {
-        reactionContent = "♡";
-      } else if (reactionContent === "") {
-        reactionContent = "👍";
-      } else if (reactionContent === undefined) {
-        reactionContent = "👍";
-      }
-
-      var contentSpan = document.createElement("span");
-      contentSpan.textContent = " " + reactionContent + " ";
-      view.appendChild(contentSpan);
-
-      var reactedEventId;
-      for (var i = 0; i < nostrEv.tags.length; i++) {
-        var tag = nostrEv.tags[i];
-        if (tag[0] === "e" && typeof tag[1] === "string") {
-          reactedEventId = tag[1];
-          break;
-        }
-      }
-
-      if (reactedEventId) {
-        const nevent = window.NostrTools.nip19.neventEncode({
-          id: reactedEventId,
-          relays: [originalPostRelayInput.value]
-        });
-        const link = externalLink(`https://njump.me/${nevent}`, `元の投稿を見る`);
-        view.appendChild(document.createTextNode(" "));
-        view.appendChild(link);
-      }
-
-      const originalPostContainer = document.createElement('div');
-      originalPostContainer.classList.add('original-post-preview');
-      originalPostContainer.id = `original-post-${nostrEv.id}`;
-      originalPostContainer.setAttribute('data-event-id', reactedEventId);
-      view.appendChild(document.createElement('br'));
-      view.appendChild(originalPostContainer);
-
-      if (reactedEventId) {
-        originalPostContainer.textContent = `元の投稿を取得中... (nostr:${reactedEventId.substring(0, 8)}...)`;
-        originalPostContainer.classList.add('loading');
-        originalPostContainer.classList.add('nostr-ref');
-        fetchAndDisplayOriginalPost(reactedEventId);
-      } else {
-        originalPostContainer.textContent = "元の投稿が見つかりません。";
-        originalPostContainer.classList.add('nostr-ref');
-      }
-      return view;
-    }
-
-
-    var timeline = document.getElementById("timeline");
-    if (timeline === null) {
-      throw new Error("no #timeline");
-    }
-
-    var relayInput = document.getElementById("relay-url");
-    var subscribeRelayButton = document.getElementById("subscribe-relay");
-    var targetHexPubkeyInput = document.getElementById("target-hex-pubkey");
-    var applyPubkeyForReactionsButton = document.getElementById("apply-pubkey-for-reactions");
-
-    var originalPostRelayInput = document.getElementById("original-post-relay-url");
-    var connectOriginalPostRelayButton = document.getElementById("connect-original-post-relay");
-
-    var reactionWS;
-    var originalPostWS;
-
-    var oldestCreatedAt = Number.MAX_VALUE;
-    var currentTargetPubkeyForReactions = undefined;
-
-    var REACTION_SUB_ID = "motherfucking-reaction-sub";
-    var PROFILE_SUB_ID_REACTIONS = "motherfucking-profile-sub-reactions";
-    var MORE_REACTIONS_SUB_ID = "motherfucking-more-reactions-sub";
-
-
-    const pubkeysToFetchProfile = new Set();
-    let profileFetchTimeout = null;
-
-
-    function clearTimeline() {
-      while (timeline.firstChild) {
-        timeline.removeChild(timeline.firstChild);
-      }
-      oldestCreatedAt = Number.MAX_VALUE;
-    }
-
-    function onEvent(nostrEv) {
-    if (nostrEv.kind === 0) {
-        try {
-            const metadata = JSON.parse(nostrEv.content);
-            let name = metadata.name || nostrEv.pubkey.substring(0, 8);
-
-            const emojiRegex = /[\uD800-\uDBFF][\uDC00-\uDFFF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDF00-\uDFFF]|\uD83E[\uDF00-\uDFFF]/g;
-            name = name.replace(emojiRegex, '');
-
-            if (name.length > 8) {
-                name = name.substring(0, 8);
-            }
-
-            profileCache[nostrEv.pubkey] = {
-                name: name,
-                picture: metadata.picture,
-                about: metadata.about
-            };
-            updatePubkeyView(nostrEv.pubkey);
-            pubkeysToFetchProfile.delete(nostrEv.pubkey);
-        } catch (e) {
-            console.error("Failed to parse kind 0 content:", e);
-        }
-        return;
-    }
-
-    if (nostrEv.kind === 1 || nostrEv.kind === 6) {
-        eventCache[nostrEv.id] = nostrEv;
-        eventsToFetch.delete(nostrEv.id);
-        updateOriginalPostView(nostrEv.id);
-        return;
-    }
-
-    if (nostrEv.kind === 7) {
-        console.log("Received Kind 7 event:", nostrEv);
-        console.log("Tags of Kind 7 event:", nostrEv.tags);
-        if (document.getElementById(nostrEv.id)) {
-            return;
-        }
-        const newReactionView = reactionEventView(nostrEv);
-        timeline.appendChild(newReactionView);
-        oldestCreatedAt = Math.min(oldestCreatedAt, nostrEv.created_at);
-
-        if (!profileCache[nostrEv.pubkey] && !pubkeysToFetchProfile.has(nostrEv.pubkey)) {
-            pubkeysToFetchProfile.add(nostrEv.pubkey);
-            scheduleProfileFetch();
-        }
-    }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>flowgazer</title>
+  <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
+  <script>
+    String.prototype.padStart = String.prototype.padStart ? String.prototype.padStart : function(targetLength, padString) {
+      targetLength = Math.floor(targetLength) || 0;
+      if(targetLength < this.length) return String(this);
+
+      padString = padString ? String(padString) : " ";
+
+      var pad = "";
+      var len = targetLength - this.length;
+      var i = 0;
+      while(pad.length < len) {
+        if(!padString[i]) {
+          i = 0;
+        }
+        pad += padString[i];
+        i++;
+      }
+      return pad + String(this).slice(0);
+    };
+
+    function getLanguage() {
+      return (window.navigator.language || window.navigator.browserLanguage || window.navigator.userLanguage).substring(0, 2);
+    }
+  </script>
+<style>
+/* リセットCSS */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-    function scheduleProfileFetch() {
-      if (profileFetchTimeout) {
-        clearTimeout(profileFetchTimeout);
-      }
-      profileFetchTimeout = setTimeout(() => {
-        if (pubkeysToFetchProfile.size > 0 && originalPostWS && originalPostWS.readyState === WebSocket.OPEN) {
-          const pubkeys = Array.from(pubkeysToFetchProfile);
-          const subId = "PROFILE_SUB_ID_REACTIONS_" + Date.now();
-          console.log("Fetching profiles for:", pubkeys.length, "pubkeys with SUB_ID:", subId, "from", originalPostRelayInput.value);
-          originalPostWS.send(JSON.stringify(["REQ", subId, {
-            kinds: [0],
-            authors: pubkeys,
-            limit: pubkeys.length
-          }]));
-        }
-        profileFetchTimeout = null;
-      }, 100);
-    }
+/* ページ全体の基本的な設定 */
+body {
+    padding: 8px;
+    line-height: 1.4;
+    font-weight: normal; /* ページ全体の太字を通常の太さに設定 */
+}
 
+/* タイムラインのリストスタイル */
+ul#timeline {
+    padding-left: 0;
+    margin: 0;
+}
+li.event {
+    list-style: none;
+    word-break: break-all;
+}
 
-    function subscribeToReactionRelay() {
-      if (reactionWS) {
-        reactionWS.removeEventListener("close", onReactionWSClose);
-        reactionWS.close();
-      }
-      clearTimeline();
+/* 各セクションの余白とレイアウト */
+h4, p, div {
+    margin-bottom: 0.5rem; /* 見出し、段落、divの下に余白を追加 */
+}
 
-      const currentReactionRelayUrl = relayInput.value;
-      try {
-        reactionWS = new WebSocket(currentReactionRelayUrl);
-      } catch (err) {
-        console.error("Failed to connect to reaction relay:", err);
-        alert("Failed to connect to reaction relay: " + currentReactionRelayUrl);
-        return;
-      }
+/* Relay URL、Filter by Pubkey、Secret Keyのセクション内の要素の配置 */
+div > * {
+    margin-right: 8px; /* div内のすべての要素の右側に余白を追加 */
+}
 
-      reactionWS.addEventListener("open", function() {
-        console.log("Connected to reaction relay:", currentReactionRelayUrl);
-        if (currentTargetPubkeyForReactions) {
-          reactionWS.send(
-            JSON.stringify(["REQ", REACTION_SUB_ID, {
-              kinds: [7],
-              "#p": [currentTargetPubkeyForReactions],
-              limit: 50
-            }])
-          );
-        } else {
-          loadMoreButton.classList.remove("loading");
-        }
-      });
+/* フォーム要素の高さと位置を揃える */
+label, input, button, textarea {
+    vertical-align: middle;
+}
 
-      reactionWS.addEventListener("message", function(ev) {
-        try {
-          var r2cMsg = JSON.parse(ev.data);
-          switch (r2cMsg[0]) {
-            case "EVENT":
-              var nostrEv = r2cMsg[2];
-              if (!window.NostrTools.verifyEvent(nostrEv)) {
-                console.error("nostr event with invalid signature:", nostrEv);
-                return;
-              }
-              onEvent(nostrEv);
-              break;
+/* 投稿の種類ごとのスタイル */
+li.event.event-repost {
+    background-color: hsl(130, 100%, 95%);
+}
+li.event.event-highlighted {
+    background-color: hsl(55, 100%, 93%);
+    border: 1px dotted #000;
+}
 
-            case "EOSE":
-              if (r2cMsg[1] === REACTION_SUB_ID || r2cMsg[1] === MORE_REACTIONS_SUB_ID) {
-                loadMoreButton.classList.remove("loading");
-              }
-              break;
+/* ボタンのスタイル */
+button#load-more.loading {
+    visibility: hidden;
+}
 
-            case "OK":
-              break;
-            case "NOTICE":
-              console.warn("Reaction Relay Notice:", r2cMsg[1]);
-              break;
-            default:
-              console.log(r2cMsg);
-              break;
-          }
-        } catch (err) {
-          console.error(err);
-        }
-      });
+/* Nostrリンクのスタイル */
+.nostr-ref {
+    background-color: hsl(268, 100%, 98%);
+}
 
-      reactionWS.addEventListener("close", onReactionWSClose);
-    }
+/* 公開鍵の参照（名前）のスタイル */
+.pubkey-ref {
+    font-weight: normal; /* 太字から通常へ変更 */
+}
+a.pubkey-ref {
+    text-decoration: none;
+}
+a.pubkey-ref:hover {
+    text-decoration: underline;
+}
 
-    function onReactionWSClose() {
-      console.log("Reaction Relay connection closed. Attempting to reconnect...");
-      setTimeout(subscribeToReactionRelay, 5000);
-    }
+/* メンションのスタイル */
+.pubkey-mention::before {
+    content: "@";
+}
 
+/* カスタム絵文字のスタイル */
+img.custom-emoji {
+    vertical-align: middle;
+    height: 24px;
+    width: auto;
+}
 
-    function connectOriginalPostRelay() {
-      if (originalPostWS) {
-        originalPostWS.removeEventListener("close", onOriginalPostWSClose);
-        originalPostWS.close();
-      }
+/* 投稿内の特殊な要素のスタイル */
+span.reply-suffix {
+    font-weight: normal; /* 太字から通常へ変更 */
+}
+span.repost-prefix,
+span.quote-prefix {
+    font-style: italic;
+    font-weight: normal; /* 太字から通常へ変更 */
+}
+</style>
+</head>
+<body>
+<h4>This is a <a href="https://github.com/nostr-protocol/nostr" target="_blank" rel="noreferrer">Nostr</a> kind:1&6 viewer.
+</h4>
+<p>It is a little perfect, maybe. Copied from <a href="https://jiftechnify.github.io/motherfucking-nostr-client/" target="_blank" rel="noreferrer">this amazing client</a>. View code on <a href="https://github.com/ompomz/ompomz.github.io/blob/main/flowgazer/index.html" target="_blank" rel="noreferrer">GitHub</a>.
+</p>
 
-      const currentOriginalPostRelayUrl = originalPostRelayInput.value;
-      try {
-        originalPostWS = new WebSocket(currentOriginalPostRelayUrl);
-      } catch (err) {
-        console.error("Failed to connect to original post relay:", err);
-        alert("Failed to connect to original post relay: " + currentOriginalPostRelayUrl);
-        return;
-      }
+<div>
+    <label for="relay-url">Relay URL:</label>
+    <input id="relay-url" type="text">
+    <button id="subscribe-relay">Subscribe</button>
+</div>
+<br>
+<div>
+    <label for="hex-filter">投稿者pubkeyしぼりこみ（hex）</label>
+    <p>入れなくてもいいし、<a href="https://heguro.github.io/nostr-following-list-util/" target="_blank" rel="noreferrer">NostrFluさま</a>とかから持ってきてもいいかも</p>
+    <textarea id="hex-filter" rows="3" cols="50" placeholder="hex1, hex2, ...←カンマ、改行、スペースいけます！"></textarea>
+    <button id="apply-filter">Apply Filter</button>
+</div>
+<br>
+<div>
+    <label for="nsec">なにか言いたくなったら（どうなってもいいやつ）</label><br><input id="nsec" type="password" placeholder="nsec1..."><br><textarea id="new-post-content" rows="2" cols="50" autocomplete="off" placeholder="What the fuck is up?"></textarea><button id="send-new-post">Post</button>
+</div>
+  
+  <hr />
 
-      originalPostWS.addEventListener("open", function() {
-        console.log("Connected to original post relay:", currentOriginalPostRelayUrl);
-        if (eventsToFetch.size > 0) {
-          scheduleEventFetch();
-        }
-        if (pubkeysToFetchProfile.size > 0) {
-          scheduleProfileFetch();
-        }
-      });
+  <ul id="timeline"></ul>
 
-      originalPostWS.addEventListener("message", function(ev) {
-        try {
-          var r2cMsg = JSON.parse(ev.data);
-          switch (r2cMsg[0]) {
-            case "EVENT":
-              var nostrEv = r2cMsg[2];
-              if (!window.NostrTools.verifyEvent(nostrEv)) {
-                console.error("nostr event with invalid signature:", nostrEv);
-                return;
-              }
-              onEvent(nostrEv);
-              break;
+  <button type="button" id="load-more" class="loading">More fuckin' posts please</button>
 
-            case "EOSE":
-              break;
+  <script>
+    function formatTimestamp(date) {
+      return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0") + ":" + String(date.getSeconds()).padStart(2, "0");
+    }
 
-            case "OK":
-              break;
-            case "NOTICE":
-              console.warn("Original Post Relay Notice:", r2cMsg[1]);
-              break;
-            default:
-              console.log(r2cMsg);
-              break;
-          }
-        } catch (err) {
-          console.error(err);
-        }
-      });
+    function findTagWithValue(tags, name, value, extraPred) {
+      for (var i = 0; i < tags.length; i++) {
+        var tag = tags[i];
+        if (tag[0] === name && tag[1] === value && (extraPred ? extraPred(tag) : true)) { 
+          return tag;
+        }
+      }
+      return undefined;
+    }
 
-      originalPostWS.addEventListener("close", onOriginalPostWSClose);
-    }
+    function baseEventView() {
+      var li = document.createElement("li");
+      li.classList.add("event");
+      return li;
+    }
 
-    function onOriginalPostWSClose() {
-      console.log("Original Post Relay connection closed. Attempting to reconnect...");
-      setTimeout(connectOriginalPostRelay, 5000);
-    }
+    function externalLink(url, text) {
+      var a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noreferrer";
+      a.textContent = text;
+      return a;
+    }
 
+    function timestampView(unixtime) {
+      var ts = new Date(unixtime * 1000);
+      var timeElem = document.createElement("time");
+      timeElem.setAttribute("datetime", ts.toISOString());
+      timeElem.textContent = "[" + formatTimestamp(ts) + "]";
+      return timeElem;
+    }
 
-    subscribeRelayButton.addEventListener("click", function() {
-      subscribeToReactionRelay();
-    });
+    // 変更点: プロファイル名を取得して表示するように修正
+function pubkeyView(pubkey) {
+  var npub = window.NostrTools.nip19.npubEncode(pubkey);
+  var displayName = profiles[pubkey] && profiles[pubkey].name ? profiles[pubkey].name : pubkey.substring(0, 8);
+  var sanitizedName = displayName.replace(/\p{Emoji_Presentation}/gu, "");
+  
+  if (sanitizedName.length > 8) {
+    sanitizedName = sanitizedName.substring(0, 8);
+  }
+  
+  var a = externalLink("https://njump.me/" + npub, sanitizedName);
+  a.classList.add("pubkey-ref");
 
-    applyPubkeyForReactionsButton.addEventListener("click", function() {
-      var hexPubkey = targetHexPubkeyInput.value.trim();
-      if (hexPubkey.length === 64 && /^[0-9a-fA-F]+$/.test(hexPubkey)) {
-        currentTargetPubkeyForReactions = hexPubkey;
-        console.log("Subscribing reactions for pubkey:", currentTargetPubkeyForReactions);
+  var pubkeyHue = parseInt(pubkey.substring(0, 2), 16) * 360 / 256;
+  a.style.color = "hsl(" + pubkeyHue + ", 0%, 70%)";
+  return a;
+}
 
-        connectOriginalPostRelay();
+    function metadataView(nostrEv) {
+      var view = document.createElement("span");
+      view.appendChild(timestampView(nostrEv.created_at));
+      view.appendChild(document.createTextNode(" "));
+      view.appendChild(pubkeyView(nostrEv.pubkey));
+      view.appendChild(document.createTextNode(" > "));
+      return view;
+    }
 
-        subscribeToReactionRelay();
-      } else {
-        alert("有効なHEX公開鍵を入力してください。");
-        currentTargetPubkeyForReactions = undefined;
-        clearTimeline();
-      }
-    });
+    var contentRefPattern = /(https?:\/\/[^\s]+)|(nostr:[\w]+1[ac-hj-np-z02-9]+)|(:[_a-zA-Z0-9]+:)/;  
 
-    connectOriginalPostRelayButton.addEventListener("click", function() {
-      connectOriginalPostRelay();
-    });
+    function indexOfFirstUnmatchingCloseParen(url) {
+      var nest = 0;
+      for (var i = 0; i < url.length; i++) {
+        var c = url.charAt(i);
+        if (c === "(") {
+          nest++;
+        } else if (c === ")") {
+          if (nest <= 0) {
+            return i;
+          }
+          nest--;
+        }
+      }
+      return -1;
+    }
 
+    function urlLinkElems(url) {
+      var splitIdx = indexOfFirstUnmatchingCloseParen(url);
+      var finalUrl = splitIdx === -1 ? url : url.substring(0, splitIdx);
+      var rest = splitIdx === -1 ? "" : url.substring(splitIdx);
 
-    var loadMoreButton = document.getElementById("load-more");
+      var link = externalLink(finalUrl, finalUrl);
 
-    function fetchMoreReactions() {
-      if (!reactionWS || reactionWS.readyState !== WebSocket.OPEN || !currentTargetPubkeyForReactions) {
-        console.warn("Reaction Relay not connected or no target pubkey set.");
-        return;
-      }
-      loadMoreButton.classList.add("loading");
+      if (rest.length === 0) {
+        return [link];
+      }
+      var restSpan = document.createElement("span");
+      restSpan.textContent = rest;
+      return [link, restSpan];
+    }
 
-      const filter = {
-        kinds: [7],
-        limit: 50,
-        until: oldestCreatedAt - 1,
-        "#p": [currentTargetPubkeyForReactions]
-      };
-      reactionWS.send(JSON.stringify(["REQ", MORE_REACTIONS_SUB_ID, filter]));
-    }
-    loadMoreButton.addEventListener("click", fetchMoreReactions);
+    function extractEventRef(nip19Decoded) {
+      switch (nip19Decoded.type) {
+        case "nevent":
+          return { id: nip19Decoded.data.id, author: nip19Decoded.data.author };
+        case "note":
+          return { id: nip19Decoded.data }
+        default:
+          return undefined;
+      }
+    }
+    function extractReplyRef(tags) {
+      var root; // first "root" p-tag
 
-    document.addEventListener("DOMContentLoaded", function() {
-    });
-  </script>
+      for (var i = 0; i < tags.length; i++) {
+        var tag = tags[i];
+        if (tag[0] !== "e") {
+          continue;
+        }
+        if (tag[3] === "reply" && typeof tag[1] === "string") {
+          return { id: tag[1], author: typeof tag[4] === "string" ? tag[4] : undefined };
+        }
+        if (root === undefined && tag[3] === "root" && typeof tag[1] === "string") {
+          root = { id: tag[1], author: typeof tag[4] === "string" ? tag[4] : undefined };
+        }
+      }
+      // no "reply" p-tag
+      return root;
+    }
+
+    function nostrRefLink(nip19Id, idType) {
+      var abbrId = nip19Id.substring(0, idType.length + 8) + "...";
+      var a = externalLink("https://njump.me/" + nip19Id, "nostr:" + abbrId);
+      a.classList.add("nostr-ref");
+      return a;
+    }
+
+    function nostrEventRefLink(nip19id, idType, hexEventId) {
+  var abbrId = nip19id.substring(0, idType.length + 8) + "...";
+  var a = document.createElement("a");
+  a.textContent = "nostr:" + abbrId;
+  a.classList.add("nostr-ref");
+
+  // ページ内に該当イベントがあるかチェック
+  if (document.getElementById(hexEventId)) {
+    // ページ内にあれば内部リンク
+    a.href = "#" + hexEventId;
+  } else {
+    // なければ外部サービスへのリンク
+    a.href = "https://njump.me/" + nip19id;
+    a.target = "_blank"; // 新しいタブで開く
+    a.rel = "noreferrer";
+  }
+  return a;
+}
+
+    // highlight <li> of event corresponds to event ref link
+    var lastHighlightedEventId;
+    window.addEventListener("hashchange", function() {
+      if (window.location.hash.length === 0) {
+        return;
+      }
+
+      var hash = window.location.hash.substring(1);
+      if (hash.length === 0) {
+        return;
+      }
+      if (lastHighlightedEventId) {
+        var highlighted = document.getElementById(lastHighlightedEventId);
+        if (highlighted) {
+          highlighted.classList.remove("event-highlighted");
+        }
+      }
+      var target = document.getElementById(hash);
+      if (!target) {
+        return;
+      }
+      lastHighlightedEventId = hash;
+      target.classList.add("event-highlighted");
+    });
+
+    function pubkeyMention(pubkey) {
+      var pubkeyRef = pubkeyView(pubkey);
+      pubkeyRef.classList.add("pubkey-mention");
+      return pubkeyRef;
+    }
+
+    function referentAuthor(pubkey) {
+      var span = document.createElement("span");
+      span.appendChild(document.createTextNode(" by "));
+      span.appendChild(pubkeyView(pubkey));
+      return span;
+    }
+
+    function inReplyToElems(nostrEv) {
+      var replyRef = extractReplyRef(nostrEv.tags);
+      if (replyRef === undefined) {
+        return [];
+      }
+      
+      var replySuffix = document.createElement("span");
+      replySuffix.textContent = "<< ";
+      replySuffix.classList.add("reply-suffix");
+
+      var nevent = window.NostrTools.nip19.neventEncode(replyRef);
+      var replyLink = nostrEventRefLink(nevent, "nevent", replyRef.id);
+
+      if (!replyRef.author) {
+        return [replyLink, replySuffix];  
+      }
+      return [replyLink, referentAuthor(replyRef.author), replySuffix];
+    }
+
+    function postQuotationElems(nip19Id, idType, hexEventId, author) {
+      var prefix = document.createElement("span");
+      prefix.textContent = "QP: ";
+      prefix.classList.add("quote-prefix");
+
+      var link = nostrEventRefLink(nip19Id, idType, hexEventId);
+
+      if (!author) {
+        return [prefix, link];
+      }
+      return [prefix, link, referentAuthor(author)];
+    }
+
+    function nostrUriElems(ref, nostrEv) {
+      var nip19Id = ref.substring(6); // trim "nostr:"
+      var dec;
+      try {
+        dec = window.NostrTools.nip19.decode(nip19Id);
+      } catch (err) {
+        console.error("failed to decode NIP-19 ID:", err);
+        return [document.createTextNode(ref)];
+      }
+
+      switch (dec.type) {
+        case "npub":
+          return [pubkeyMention(dec.data)];
+        case "nprofile":
+          return [pubkeyMention(dec.data.pubkey)];
+
+        case "note":
+        case "nevent":
+          var evRef = extractEventRef(dec);
+          if (ref === undefined) {
+            console.error("unreachable");
+            return [nostrRefLink(nip19Id, dec.type)];
+          }
+          var mentionTag = findTagWithValue(nostrEv.tags, "e", evRef.id, function(t) { t[3] === "mention" });
+          var author = (mentionTag && mentionTag[4]) || evRef.author;
+          return postQuotationElems(nip19Id, dec.type, evRef.id, evRef.author);
+
+        default:
+          return [nostrRefLink(nip19Id, dec.type)];
+      }
+    }
+
+    function customEmojiElems(shortcode, nostrEv) {
+      var emojiName = shortcode.substring(1, shortcode.length - 1);
+      for (var i = 0; i < nostrEv.tags.length; i++) {
+        var tag = nostrEv.tags[i];
+        if (tag[0] === "emoji" && tag[1] === emojiName && typeof tag[2] === "string") {
+          var img = document.createElement('img');
+          img.src = tag[2];
+          img.alt = shortcode;
+          img.classList.add("custom-emoji");
+          return [img];
+        }
+      }
+      // no matching emoji found
+      return [document.createTextNode(shortcode)];
+    }
+
+    function postEventView(nostrEv) {
+      var view = baseEventView();
+      view.id = nostrEv.id;
+      view.classList.add("event-post");
+      
+      view.appendChild(metadataView(nostrEv));
+
+      // handling reply
+      inReplyToElems(nostrEv).forEach(function(e) {
+        view.appendChild(e);
+      });
+
+      // Node[][]
+      var contentElems = nostrEv.content.split(contentRefPattern)
+        .filter(function(s) {
+          return s !== undefined && s.length > 0;
+        })
+        .map(function(s) {
+          if (s.indexOf("http") === 0) {
+            return urlLinkElems(s);
+          } else if (s.indexOf("nostr:") === 0) {
+            return nostrUriElems(s, nostrEv);
+          } else if (s.charAt(0) === ":" && s.charAt(s.length - 1) === ":") {
+            return customEmojiElems(s, nostrEv);
+          } else {
+            return [document.createTextNode(s)];
+          }
+        });
+      contentElems.forEach(function(elems) {
+        elems.forEach(function(e) {
+          view.appendChild(e);
+        });
+      });
+
+      return view;
+    }
+
+    function repostEventView(nostrEv) {
+      var targetPostId;
+      var targetPostAuthor;
+      for (var i = 0; i < nostrEv.tags.length; i++) {
+        var tag = nostrEv.tags[i];
+        if (tag[0] === "e" && typeof tag[1] === "string") {
+          targetPostId = tag[1];
+        }
+        if (tag[0] === "p" && typeof tag[1] === "string") {
+          targetPostAuthor = tag[1];
+        }
+        if (targetPostId && targetPostAuthor) {
+          break;
+        }
+      }
+      if (targetPostId === undefined) {
+        console.error("repost without target post ID:", nostrEv);
+        return undefined;
+      }
+
+      var view = baseEventView();
+      view.classList.add("event-repost");
+
+      view.appendChild(metadataView(nostrEv));
+
+      var repostPrefix = document.createElement("span");
+      repostPrefix.textContent = "RP: ";
+      repostPrefix.classList.add("repost-prefix");
+      
+      var nevent = window.NostrTools.nip19.neventEncode({ id: targetPostId });
+      var repostLink = nostrEventRefLink(nevent, "nevent", targetPostId);
+
+      view.appendChild(repostPrefix);
+      view.appendChild(repostLink);
+      if (targetPostAuthor) {
+        view.appendChild(referentAuthor(targetPostAuthor));
+      }
+      return view;
+    }
+
+    var supportedKinds = [1, 6];
+    var profiles = {}; // 投稿者のプロファイルを格納するオブジェクト
+    var events = {}; // イベントの重複を避けるためにキャッシュするオブジェクト
+    var filteredAuthors = null; // 変更点: 絞り込み対象の公開鍵リストを保持
+
+    function onEvent(nostrEv, prepend) {
+      if (!window.NostrTools.verifyEvent(nostrEv)) {
+        console.error("nostr event with invalid signature:", nostrEv);
+        return;
+      }
+
+      // 変更点: kind:0イベントの処理を追加
+      if (nostrEv.kind === 0) {
+          try {
+              profiles[nostrEv.pubkey] = JSON.parse(nostrEv.content);
+              // プロファイル情報が取得できたら、タイムラインの表示を更新
+              refreshTimeline();
+          } catch (e) {
+              console.error("Failed to parse profile content:", e);
+          }
+          return;
+      }
+
+      if (supportedKinds.indexOf(nostrEv.kind) === -1) {
+        console.error("unsupported kind:", nostrEv.kind);
+        return;
+      }
+      
+      // 変更点: イベントの重複チェックを追加
+      if (events[nostrEv.id]) {
+          return;
+      }
+      events[nostrEv.id] = nostrEv;
+
+      oldestCreatedAt = Math.min(oldestCreatedAt, nostrEv.created_at);
+      
+      // 変更点: 投稿者の公開鍵を収集
+      pubkeysToFetch.add(nostrEv.pubkey);
+      
+      var eventView;
+      switch (nostrEv.kind) {
+      case 1:
+        eventView = postEventView(nostrEv);
+        break;
+      case 6:
+        eventView = repostEventView(nostrEv);
+        break;
+      default:
+        // unreachable
+        return;
+      }
+      if (eventView === undefined) {
+        return;
+      }
+
+      if (prepend) {
+        timeline.insertBefore(eventView, timeline.firstChild);
+      } else {
+        timeline.appendChild(eventView);
+      }
+    }
+    
+    // 変更点: タイムラインの再描画関数を追加
+    function refreshTimeline() {
+        // 既存のタイムラインをクリア
+        while (timeline.firstChild) {
+            timeline.removeChild(timeline.firstChild);
+        }
+        // キャッシュされたイベントを再描画
+        var sortedEvents = Object.values(events).sort((a, b) => b.created_at - a.created_at);
+        sortedEvents.forEach(e => {
+            if (e.kind === 1) {
+                timeline.appendChild(postEventView(e));
+            } else if (e.kind === 6) {
+                timeline.appendChild(repostEventView(e));
+            }
+        });
+    }
+
+    function onWSClose() {
+      alert("Relay connection closed");
+    }
+
+    var MAIN_SUB_ID = "motherfuncking-main-sub";
+    var MORE_POSTS_SUB_ID = "motherfuncking-more-posts";
+    var PROFILE_SUB_ID = "motherfuncking-profile-sub"; // 変更点: プロファイル取得用のサブスクリプションID
+    
+    var pubkeysToFetch = new Set(); // 変更点: プロファイルを取得する公開鍵を保持するSet
+
+    function isKnownSubId(subId) {
+      return subId === MAIN_SUB_ID || subId === MORE_POSTS_SUB_ID || subId === PROFILE_SUB_ID;
+    }
+    function shouldPrependPost(subId, afterEose) {
+      return subId === MAIN_SUB_ID && afterEose;
+    }
+
+    var relayWS;
+    // 変更点: subscribeRelay関数を修正し、authorsフィルターを引数で受け取るようにする
+    function subscribeRelay(relayUrl, authors) {
+      if (relayWS) {
+        while (timeline.firstChild) {
+          timeline.removeChild(timeline.firstChild);
+        }
+        relayWS.removeEventListener("close", onWSClose);
+        relayWS.close();
+      }
+      
+      try {
+        relayWS = new WebSocket(relayUrl);
+      } catch (err) {
+        console.error("failed to connect to relay:", err);
+        alert("Failed to connect to relay:", relayUrl);
+        return;
+      }
+      
+      // タイムラインとキャッシュをリセット
+      events = {};
+      pubkeysToFetch = new Set();
+      oldestCreatedAt = Number.MAX_VALUE;
+
+      var afterEose = false;
+      
+      var filter = { kinds: [1, 6], limit: 50 };
+      if (authors && authors.length > 0) {
+        filter.authors = authors;
+      }
+
+      relayWS.addEventListener("open", function() {
+        relayWS.send(
+          JSON.stringify(["REQ", MAIN_SUB_ID, filter])
+        );
+      });
+
+      relayWS.addEventListener("message", function(ev) {
+        try {
+          var r2cMsg = JSON.parse(ev.data);
+          switch (r2cMsg[0]) {
+          case "EVENT":
+            var subId = r2cMsg[1];
+            if (!isKnownSubId(subId)) {
+              console.error("unknown subId:", subId);
+              return;
+            }
+            onEvent(r2cMsg[2], shouldPrependPost(subId, afterEose));
+            break;
+
+          case "EOSE":
+            var subId = r2cMsg[1];
+            if (subId === MAIN_SUB_ID) {
+              afterEose = true;
+              // 変更点: EOSEを受け取った後に、プロファイル取得を開始
+              fetchProfiles();
+            }
+            loadMoreButton.classList.remove("loading");
+            break;
+            
+          default:
+            console.log(r2cMsg);
+            break;
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      });
+
+      relayWS.addEventListener("close", onWSClose);
+    }
+    
+    // 変更点: プロファイルを取得する関数を追加
+    function fetchProfiles() {
+        if (pubkeysToFetch.size === 0) {
+            return;
+        }
+
+        var profileRelayWS = new WebSocket("wss://relay.nostr.band");
+        
+        profileRelayWS.addEventListener("open", function() {
+            var pubkeysArray = Array.from(pubkeysToFetch);
+            profileRelayWS.send(
+                JSON.stringify(["REQ", PROFILE_SUB_ID, { kinds: [0], authors: pubkeysArray }])
+            );
+        });
+
+        profileRelayWS.addEventListener("message", function(ev) {
+            try {
+                var r2cMsg = JSON.parse(ev.data);
+                switch (r2cMsg[0]) {
+                    case "EVENT":
+                        var nostrEv = r2cMsg[2];
+                        if (nostrEv.kind === 0) {
+                            try {
+                                var profileContent = JSON.parse(nostrEv.content);
+                                profiles[nostrEv.pubkey] = profileContent;
+                                pubkeysToFetch.delete(nostrEv.pubkey);
+                            } catch (e) {
+                                console.error("Failed to parse profile content:", e);
+                            }
+                        }
+                        break;
+                    case "EOSE":
+                        // プロファイルの取得が完了したらタイムラインを再描画
+                        refreshTimeline();
+                        // 接続を閉じる
+                        profileRelayWS.close();
+                        break;
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+    }
+
+    var timeline = document.getElementById("timeline");
+    if (timeline === null) {
+      throw new Error("no #timeline");
+    }
+
+    // subscribing relay
+    var LS_RELAY_URL_KEY = "relayUrl";
+
+    var relayUrlInput = document.getElementById("relay-url");
+    var subscribeButton = document.getElementById("subscribe-relay");
+    subscribeButton.addEventListener("click", function() {
+      var rurl = relayUrlInput.value;
+      subscribeRelay(rurl);
+      localStorage.setItem(LS_RELAY_URL_KEY, rurl);
+    });
+
+    // initial subscription
+    var latestRurl = localStorage.getItem(LS_RELAY_URL_KEY);
+    var defaultRurl = getLanguage() === "ja" ? "wss://r.kojira.io" : "wss://nos.lol/";
+    var initialRurl = latestRurl || defaultRurl;
+
+    relayUrlInput.value = initialRurl;
+    subscribeRelay(initialRurl);
+
+    // create new post
+    var nsecInput = document.getElementById("nsec");
+    var postContentInput = document.getElementById("new-post-content");
+    var sendPostButton = document.getElementById("send-new-post");
+    function sendeNewPost() {
+      var nsec = nsecInput.value;
+      var content = postContentInput.value;
+      if (!nsec || !content) {
+        return;
+      }
+
+      try {
+        var nsecDecoded = window.NostrTools.nip19.decode(nsec);
+        if (nsecDecoded.type !== "nsec") {
+          alert("Invalid secret key");
+          return;
+        }
+        var seckey = nsecDecoded.data;
+      
+        var post = {
+          kind: 1,
+          content: content,
+          created_at: Math.floor(Date.now() / 1000),
+          tags: [],
+        };
+        var signedPost = window.NostrTools.finalizeEvent(post, seckey);
+        relayWS.send(JSON.stringify(["EVENT", signedPost]));
+
+        postContentInput.value = "";
+      } catch (err) {
+        console.error(err);
+        alert("Post failed");
+      }
+    }
+    sendPostButton.addEventListener("click", sendeNewPost);
+
+    // 変更点: 絞り込み機能の追加
+    var hexFilterInput = document.getElementById("hex-filter");
+    var applyFilterButton = document.getElementById("apply-filter");
+
+    function filterAuthors() {
+      var inputText = hexFilterInput.value;
+      if (!inputText.trim()) {
+        return []; // 空欄なら空の配列を返す
+      }
+      // スペース、カンマ、改行で分割
+      var authors = inputText.split(/[ ,　\n]/);
+      var filtered = authors.filter(function(hex) {
+        // nsecやnpubをデコードしてhexに変換
+        if (hex.startsWith('npub') || hex.startsWith('nprofile')) {
+          try {
+            var decoded = NostrTools.nip19.decode(hex);
+            if (decoded.type === 'npub') {
+              return decoded.data;
+            } else if (decoded.type === 'nprofile') {
+              return decoded.data.pubkey;
+            }
+          } catch (e) {
+            return null; // デコード失敗
+          }
+        }
+        // hexかどうかをチェック
+        return hex.length === 64 && /^[0-9a-fA-F]{64}$/.test(hex) ? hex : null;
+      }).filter(Boolean); // null, undefined, falseなどを除外
+      
+      return filtered;
+    }
+
+    applyFilterButton.addEventListener("click", function() {
+      filteredAuthors = filterAuthors();
+      var rurl = relayUrlInput.value;
+      subscribeRelay(rurl, filteredAuthors);
+    });
+    
+    // load more posts
+    var oldestCreatedAt = Number.MAX_VALUE;
+    var loadMoreButton = document.getElementById("load-more");
+    // 変更点: fetchMorePosts関数もauthorsフィルターを考慮するように修正
+    function fetchMorePosts() {
+      if (!relayWS) {
+        return;
+      }
+      loadMoreButton.classList.add("loading");
+
+      var filter = { kinds: [1, 6], limit: 50, until: oldestCreatedAt - 1 };
+      if (filteredAuthors && filteredAuthors.length > 0) {
+        filter.authors = filteredAuthors;
+      }
+
+      relayWS.send(
+        JSON.stringify(["REQ", MORE_POSTS_SUB_ID, filter])
+      );
+    }
+    loadMoreButton.addEventListener("click", fetchMorePosts);
+  </script>
 </body>
 </html>
