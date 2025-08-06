@@ -1,1 +1,452 @@
-<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>stargazer</title><script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script><style>*{margin:0;padding:0;box-sizing:border-box}body{padding:8px;line-height:1.4;font-weight:normal}ul#timeline{padding-left:0;margin:0}li.event{list-style:none;word-break:break-all;border-bottom:1px solid #eee;padding:4px 0;font-weight:normal}li.event.event-reaction{background-color:#F0F8FF;font-style:italic}a.pubkey-ref{color:#B3B3B3;text-decoration:none}a.pubkey-ref:hover{text-decoration:underline}.original-post-preview{margin-top:0.5rem;background-color:#F5F5DC;border-left:1px solid #ccc;font-size:0.9em;font-style:normal;max-height:100px;overflow:hidden;text-overflow:ellipsis}</style></head><body><h4>Nostr kind:7 viewer.</h4><p>View reactions for a specific pubkey.</p><div><label for="target-hex-pubkey">pubkey:</label><input id="target-hex-pubkey" type="text" placeholder="hex"><button id="apply-pubkey-for-reactions">View</button></div><hr><ul id="timeline"></ul><button type="button" id="load-more" class="loading">More reactions please</button><script>String.prototype.padStart=String.prototype.padStart?String.prototype.padStart:function(a,b){a=Math.floor(a)||0;if(a<this.length)return String(this);b=b?String(b):" ";for(var c="",d=a-this.length,e=0;c.length<d;){if(!b[e])e=0;c+=b[e];e++}return c+String(this).slice(0)};function getLanguage(){return(window.navigator.language||window.navigator.browserLanguage||window.navigator.userLanguage).substring(0,2)}function formatTimestamp(a){return String(a.getHours()).padStart(2,"0")+":"+String(a.getMinutes()).padStart(2,"0")+":"+String(a.getSeconds()).padStart(2,"0")}function findTagWithValue(a,b,c,d){for(var e=0;e<a.length;e++){var f=a[e];if(f[0]===b&&f[1]===c&&(d?d(f):!0))return f}return undefined}function baseEventView(){var a=document.createElement("li");return a.classList.add("event"),a}function externalLink(a,b){var c=document.createElement("a");return c.href=a,c.target="_blank",c.rel="noreferrer",c.textContent=b,c}function timestampView(a){var b=new Date(1E3*a),c=document.createElement("time");return c.setAttribute("datetime",b.toISOString()),c.textContent="["+formatTimestamp(b)+"]",c}const profileCache={},pubkeyElements={};function getDisplayName(a){return profileCache[a]&&profileCache[a].name?profileCache[a].name:a.substring(0,8)}function updatePubkeyView(a){const b=getDisplayName(a);pubkeyElements[a]&&pubkeyElements[a].forEach(a=>{a.textContent=b})}function pubkeyView(a){var b=window.NostrTools.nip19.npubEncode(a),c=getDisplayName(a),d=externalLink("https://njump.me/"+b,c);return d.classList.add("pubkey-ref"),pubkeyElements[a]||(pubkeyElements[a]=[]),pubkeyElements[a].push(d),d}function metadataView(a){var b=document.createElement("span");return b.appendChild(timestampView(a.created_at)),b.appendChild(document.createTextNode(" ")),b.appendChild(pubkeyView(a.pubkey)),b.appendChild(document.createTextNode(" > ")),b}function customEmojiElems(a,b){return[document.createTextNode(a)]}const eventCache={},eventsToFetch=new Set;let eventFetchTimeout=null;function fetchAndDisplayOriginalPost(a){eventCache[a]?updateOriginalPostView(a):eventsToFetch.has(a)||!function(){eventsToFetch.add(a),scheduleEventFetch()}()}function updateOriginalPostView(a){const b=document.querySelectorAll(`.original-post-preview[data-event-id="${a}"]`);b.forEach(b=>{const c=eventCache[a];c&&(b.textContent=c.content.substring(0,150)+(c.content.length>150?"...":""),b.classList.remove("loading"))})}function scheduleEventFetch(){eventFetchTimeout&&clearTimeout(eventFetchTimeout),eventFetchTimeout=setTimeout(()=>{eventsToFetch.size>0&&reactionWS&&reactionWS.readyState===WebSocket.OPEN&&(reactionWS.send(JSON.stringify(["REQ","FETCH_ORIGINAL_EVENTS_"+Date.now(),{ids:Array.from(eventsToFetch),kinds:[1,6],limit:eventsToFetch.length}])),eventFetchTimeout=null)},100)}function reactionEventView(a){var b=baseEventView();b.id=a.id,b.classList.add("event-reaction"),b.appendChild(metadataView(a));var c=a.content;c==="+??"&&(c="♡"),c===""&&(c="👍"),void 0===c&&(c="👍");var d=document.createElement("span");d.textContent=" "+c+" ",b.appendChild(d);var e;for(var f=0;f<a.tags.length;f++){var g=a.tags[f];if("e"===g[0]&&"string"==typeof g[1]){e=g[1];break}}if(e){const f=window.NostrTools.nip19.neventEncode({id:e,relays:["wss://relay.nostr.band"]}),g=externalLink(`https://njump.me/${f}`,"元の投稿を見る");b.appendChild(document.createTextNode(" ")),b.appendChild(g)}const h=document.createElement("div");return h.classList.add("original-post-preview"),h.id=`original-post-${a.id}`,h.setAttribute("data-event-id",e),b.appendChild(document.createElement("br")),b.appendChild(h),e?(h.textContent=`元の投稿を取得中... (nostr:${e.substring(0,8)}...)`,h.classList.add("loading"),fetchAndDisplayOriginalPost(e)):h.textContent="元の投稿が見つかりません。",b}var timeline=document.getElementById("timeline");if(null===timeline)throw new Error("no #timeline");var targetHexPubkeyInput=document.getElementById("target-hex-pubkey"),applyPubkeyForReactionsButton=document.getElementById("apply-pubkey-for-reactions"),RELAY_URL="wss://relay.nostr.band",reactionWS,oldestCreatedAt=Number.MAX_VALUE,currentTargetPubkeyForReactions=undefined,REACTION_SUB_ID="motherfucking-reaction-sub",PROFILE_SUB_ID_REACTIONS="motherfucking-profile-sub-reactions",MORE_REACTIONS_SUB_ID="motherfucking-more-reactions-sub",pubkeysToFetchProfile=new Set;let profileFetchTimeout=null;function clearTimeline(){for(;timeline.firstChild;)timeline.removeChild(timeline.firstChild);oldestCreatedAt=Number.MAX_VALUE}function onEvent(a){if(0===a.kind)try{const b=JSON.parse(a.content);profileCache[a.pubkey]={name:b.name||a.pubkey.substring(0,8),picture:b.picture,about:b.about},updatePubkeyView(a.pubkey),pubkeysToFetchProfile.delete(a.pubkey)}catch(a){console.error("Failed to parse kind 0 content:",a)}if(1===a.kind||6===a.kind)return eventCache[a.id]=a,eventsToFetch.delete(a.id),void updateOriginalPostView(a.id);if(7===a.kind&&!document.getElementById(a.id)){const b=reactionEventView(a);timeline.appendChild(b),oldestCreatedAt=Math.min(oldestCreatedAt,a.created_at),profileCache[a.pubkey]||pubkeysToFetchProfile.has(a.pubkey)||(pubkeysToFetchProfile.add(a.pubkey),scheduleProfileFetch())}}function scheduleProfileFetch(){profileFetchTimeout&&clearTimeout(profileFetchTimeout),profileFetchTimeout=setTimeout(()=>{pubkeysToFetchProfile.size>0&&reactionWS&&reactionWS.readyState===WebSocket.OPEN&&(reactionWS.send(JSON.stringify(["REQ","PROFILE_SUB_ID_REACTIONS_"+Date.now(),{kinds:[0],authors:Array.from(pubkeysToFetchProfile),limit:pubkeysToFetchProfile.length}])),profileFetchTimeout=null)},100)}function subscribeToReactionRelay(){reactionWS&&(reactionWS.removeEventListener("close",onReactionWSClose),reactionWS.close()),clearTimeline();try{reactionWS=new WebSocket(RELAY_URL)}catch(a){return console.error("Failed to connect to relay:",a),void alert("Failed to connect to relay: "+RELAY_URL)}reactionWS.addEventListener("open",function(){console.log("Connected to relay:",RELAY_URL),currentTargetPubkeyForReactions?reactionWS.send(JSON.stringify(["REQ",REACTION_SUB_ID,{kinds:[7],"#p":[currentTargetPubkeyForReactions],limit:50}])):loadMoreButton.classList.remove("loading")}),reactionWS.addEventListener("message",function(a){try{var b=JSON.parse(a.data);switch(b[0]){case"EVENT":var c=b[2];window.NostrTools.verifyEvent(c)?onEvent(c):console.error("nostr event with invalid signature:",c);break;case"EOSE":(b[1]===REACTION_SUB_ID||b[1]===MORE_REACTIONS_SUB_ID)&&loadMoreButton.classList.remove("loading");break;case"OK":break;case"NOTICE":console.warn("Relay Notice:",b[1]);break;default:console.log(b)}}catch(a){console.error(a)}}),reactionWS.addEventListener("close",onReactionWSClose)}function onReactionWSClose(){console.log("Relay connection closed. Attempting to reconnect..."),setTimeout(subscribeToReactionRelay,5E3)}applyPubkeyForReactionsButton.addEventListener("click",function(){var a=targetHexPubkeyInput.value.trim();a.length===64&&/^[0-9a-fA-F]+$/.test(a)?(currentTargetPubkeyForReactions=a,console.log("Subscribing reactions for pubkey:",currentTargetPubkeyForReactions),subscribeToReactionRelay()):(alert("有効なhex公開鍵を入力してください。"),currentTargetPubkeyForReactions=undefined,clearTimeline())});var loadMoreButton=document.getElementById("load-more");function fetchMoreReactions(){if(!reactionWS||reactionWS.readyState!==WebSocket.OPEN||!currentTargetPubkeyForReactions)return void console.warn("Relay not connected or no target pubkey set.");loadMoreButton.classList.add("loading");const a={kinds:[7],limit:50,until:oldestCreatedAt-1,"#p":[currentTargetPubkeyForReactions]};reactionWS.send(JSON.stringify(["REQ",MORE_REACTIONS_SUB_ID,a]))}loadMoreButton.addEventListener("click",fetchMoreReactions),document.addEventListener("DOMContentLoaded",function(){subscribeToReactionRelay()})</script></body></html>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>stargazer</title>
+  <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
+  <style>
+    /* リセットCSS */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* 基本設定 */
+    body {
+      padding: 8px;
+      line-height: 1.4;
+      font-weight: normal;
+    }
+
+    /* タイムライン */
+    ul#timeline {
+      padding-left: 0;
+      margin: 0;
+    }
+
+    li.event {
+      list-style: none;
+      word-break: break-all;
+      border-bottom: 1px solid #eee;
+      padding: 4px 0;
+      font-weight: normal;
+    }
+
+    li.event.event-reaction {
+      background-color: #F5F5F5;
+      font-style: italic;
+    }
+
+    /* Nostr関連 */
+    a.pubkey-ref {
+      color: #B3B3B3;
+      text-decoration: none;
+    }
+
+    a.pubkey-ref:hover {
+      text-decoration: underline;
+    }
+
+    /* 元の投稿プレビュー */
+    .original-post-preview {
+      margin-top: 0.5rem;
+      background-color: #E8E8E8;
+      border-left: 1px solid #ccc;
+      font-size: 0.9em;
+      font-style: normal;
+      max-height: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  </style>
+</head>
+<body>
+  <h4>Nostr kind:7 viewer.</h4>
+  <p>View reactions for a specific pubkey.</p>
+  <div>
+    <label for="target-hex-pubkey">pubkey:</label>
+    <input id="target-hex-pubkey" type="text" placeholder="hex">
+    <button id="apply-pubkey-for-reactions">View</button>
+  </div>
+  <hr>
+  <ul id="timeline"></ul>
+  <button type="button" id="load-more" class="loading">More reactions please</button>
+
+  <script>
+    String.prototype.padStart = String.prototype.padStart ? String.prototype.padStart : function(targetLength, padString) {
+      targetLength = Math.floor(targetLength) || 0;
+      if (targetLength < this.length) return String(this);
+      padString = padString ? String(padString) : " ";
+      var pad = "";
+      var len = targetLength - this.length;
+      var i = 0;
+      while (pad.length < len) {
+        if (!padString[i]) {
+          i = 0;
+        }
+        pad += padString[i];
+        i++;
+      }
+      return pad + String(this).slice(0);
+    };
+
+    function getLanguage() {
+      return (window.navigator.language || window.navigator.browserLanguage || window.navigator.userLanguage).substring(0, 2);
+    }
+
+    function formatTimestamp(date) {
+      return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0") + ":" + String(date.getSeconds()).padStart(2, "0");
+    }
+
+    function findTagWithValue(tags, name, value, extraPred) {
+      for (var i = 0; i < tags.length; i++) {
+        var tag = tags[i];
+        if (tag[0] === name && tag[1] === value && (extraPred ? extraPred(tag) : true)) {
+          return tag;
+        }
+      }
+      return undefined;
+    }
+
+    function baseEventView() {
+      var li = document.createElement("li");
+      li.classList.add("event");
+      return li;
+    }
+
+    function externalLink(url, text) {
+      var a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noreferrer";
+      a.textContent = text;
+      return a;
+    }
+
+    function timestampView(unixtime) {
+      var ts = new Date(unixtime * 1000);
+      var timeElem = document.createElement("time");
+      timeElem.setAttribute("datetime", ts.toISOString());
+      timeElem.textContent = "[" + formatTimestamp(ts) + "]";
+      return timeElem;
+    }
+
+    const profileCache = {};
+    const pubkeyElements = {};
+
+    function getDisplayName(pubkey) {
+      if (profileCache[pubkey] && profileCache[pubkey].name) {
+        return profileCache[pubkey].name;
+      }
+      return pubkey.substring(0, 8);
+    }
+
+    function updatePubkeyView(pubkey) {
+      const displayName = getDisplayName(pubkey);
+      if (pubkeyElements[pubkey]) {
+        pubkeyElements[pubkey].forEach(elem => {
+          elem.textContent = displayName;
+        });
+      }
+    }
+
+    function pubkeyView(pubkey) {
+      var npub = window.NostrTools.nip19.npubEncode(pubkey);
+      var displayName = getDisplayName(pubkey);
+      var a = externalLink("https://njump.me/" + npub, displayName);
+      a.classList.add("pubkey-ref");
+      if (!pubkeyElements[pubkey]) {
+        pubkeyElements[pubkey] = [];
+      }
+      pubkeyElements[pubkey].push(a);
+      return a;
+    }
+
+    function metadataView(nostrEv) {
+      var view = document.createElement("span");
+      view.appendChild(timestampView(nostrEv.created_at));
+      view.appendChild(document.createTextNode(" "));
+      view.appendChild(pubkeyView(nostrEv.pubkey));
+      view.appendChild(document.createTextNode(" > "));
+      return view;
+    }
+
+    function customEmojiElems(shortcode, nostrEv) {
+      return [document.createTextNode(shortcode)];
+    }
+
+    const eventCache = {};
+    const eventsToFetch = new Set();
+    let eventFetchTimeout = null;
+
+    function fetchAndDisplayOriginalPost(reactedEventId) {
+      if (eventCache[reactedEventId]) {
+        updateOriginalPostView(reactedEventId);
+        return;
+      }
+      if (!eventsToFetch.has(reactedEventId)) {
+        eventsToFetch.add(reactedEventId);
+        scheduleEventFetch();
+      }
+    }
+
+    function updateOriginalPostView(reactedEventId) {
+      const elementsToUpdate = document.querySelectorAll(`.original-post-preview[data-event-id="${reactedEventId}"]`);
+      elementsToUpdate.forEach(elem => {
+        const originalEvent = eventCache[reactedEventId];
+        if (originalEvent) {
+          elem.textContent = originalEvent.content.substring(0, 150) + (originalEvent.content.length > 150 ? '...' : '');
+          elem.classList.remove('loading');
+        }
+      });
+    }
+
+    function scheduleEventFetch() {
+      if (eventFetchTimeout) {
+        clearTimeout(eventFetchTimeout);
+      }
+      eventFetchTimeout = setTimeout(() => {
+        if (eventsToFetch.size > 0 && reactionWS && reactionWS.readyState === WebSocket.OPEN) {
+          const eventIds = Array.from(eventsToFetch);
+          const subId = "FETCH_ORIGINAL_EVENTS_" + Date.now();
+          reactionWS.send(JSON.stringify(["REQ", subId, {
+            ids: eventIds,
+            kinds: [1, 6],
+            limit: eventIds.length
+          }]));
+        }
+        eventFetchTimeout = null;
+      }, 100);
+    }
+
+    function reactionEventView(nostrEv) {
+      var view = baseEventView();
+      view.id = nostrEv.id;
+      view.classList.add("event-reaction");
+      view.appendChild(metadataView(nostrEv));
+      var reactionContent = nostrEv.content;
+      if (reactionContent === "+") {
+        reactionContent = "♡";
+      } else if (reactionContent === "") {
+        reactionContent = "👍";
+      } else if (reactionContent === undefined) {
+        reactionContent = "👍";
+      }
+      var contentSpan = document.createElement("span");
+      contentSpan.textContent = " " + reactionContent + " ";
+      view.appendChild(contentSpan);
+      var reactedEventId;
+      for (var i = 0; i < nostrEv.tags.length; i++) {
+        var tag = nostrEv.tags[i];
+        if (tag[0] === "e" && typeof tag[1] === "string") {
+          reactedEventId = tag[1];
+          break;
+        }
+      }
+      if (reactedEventId) {
+        const nevent = window.NostrTools.nip19.neventEncode({
+          id: reactedEventId,
+          relays: ["wss://relay.nostr.band"]
+        });
+        const link = externalLink(`https://njump.me/${nevent}`, `元の投稿を見る`);
+        view.appendChild(document.createTextNode(" "));
+        view.appendChild(link);
+      }
+      const originalPostContainer = document.createElement('div');
+      originalPostContainer.classList.add('original-post-preview');
+      originalPostContainer.id = `original-post-${nostrEv.id}`;
+      originalPostContainer.setAttribute('data-event-id', reactedEventId);
+      view.appendChild(document.createElement('br'));
+      view.appendChild(originalPostContainer);
+      if (reactedEventId) {
+        originalPostContainer.textContent = `元の投稿を取得中... (nostr:${reactedEventId.substring(0, 8)}...)`;
+        originalPostContainer.classList.add('loading');
+        fetchAndDisplayOriginalPost(reactedEventId);
+      } else {
+        originalPostContainer.textContent = "元の投稿が見つかりません。";
+      }
+      return view;
+    }
+
+    var timeline = document.getElementById("timeline");
+    if (timeline === null) {
+      throw new Error("no #timeline");
+    }
+
+    var targetHexPubkeyInput = document.getElementById("target-hex-pubkey");
+    var applyPubkeyForReactionsButton = document.getElementById("apply-pubkey-for-reactions");
+    const RELAY_URL = "wss://relay.nostr.band";
+    var reactionWS;
+    var oldestCreatedAt = Number.MAX_VALUE;
+    var currentTargetPubkeyForReactions = undefined;
+    var REACTION_SUB_ID = "motherfucking-reaction-sub";
+    var PROFILE_SUB_ID_REACTIONS = "motherfucking-profile-sub-reactions";
+    var MORE_REACTIONS_SUB_ID = "motherfucking-more-reactions-sub";
+    const pubkeysToFetchProfile = new Set();
+    let profileFetchTimeout = null;
+
+    function clearTimeline() {
+      while (timeline.firstChild) {
+        timeline.removeChild(timeline.firstChild);
+      }
+      oldestCreatedAt = Number.MAX_VALUE;
+    }
+
+    function onEvent(nostrEv) {
+      if (nostrEv.kind === 0) {
+        try {
+          const metadata = JSON.parse(nostrEv.content);
+          profileCache[nostrEv.pubkey] = {
+            name: metadata.name || nostrEv.pubkey.substring(0, 8),
+            picture: metadata.picture,
+            about: metadata.about
+          };
+          updatePubkeyView(nostrEv.pubkey);
+          pubkeysToFetchProfile.delete(nostrEv.pubkey);
+        } catch (e) {
+          console.error("Failed to parse kind 0 content:", e);
+        }
+        return;
+      }
+      if (nostrEv.kind === 1 || nostrEv.kind === 6) {
+        eventCache[nostrEv.id] = nostrEv;
+        eventsToFetch.delete(nostrEv.id);
+        updateOriginalPostView(nostrEv.id);
+        return;
+      }
+      if (nostrEv.kind === 7) {
+        if (document.getElementById(nostrEv.id)) {
+          return;
+        }
+        const newReactionView = reactionEventView(nostrEv);
+        timeline.appendChild(newReactionView);
+        oldestCreatedAt = Math.min(oldestCreatedAt, nostrEv.created_at);
+        if (!profileCache[nostrEv.pubkey] && !pubkeysToFetchProfile.has(nostrEv.pubkey)) {
+          pubkeysToFetchProfile.add(nostrEv.pubkey);
+          scheduleProfileFetch();
+        }
+      }
+    }
+
+    function scheduleProfileFetch() {
+      if (profileFetchTimeout) {
+        clearTimeout(profileFetchTimeout);
+      }
+      profileFetchTimeout = setTimeout(() => {
+        if (pubkeysToFetchProfile.size > 0 && reactionWS && reactionWS.readyState === WebSocket.OPEN) {
+          const pubkeys = Array.from(pubkeysToFetchProfile);
+          const subId = "PROFILE_SUB_ID_REACTIONS_" + Date.now();
+          reactionWS.send(JSON.stringify(["REQ", subId, {
+            kinds: [0],
+            authors: pubkeys,
+            limit: pubkeys.length
+          }]));
+        }
+        profileFetchTimeout = null;
+      }, 100);
+    }
+
+    function subscribeToReactionRelay() {
+      if (reactionWS) {
+        reactionWS.removeEventListener("close", onReactionWSClose);
+        reactionWS.close();
+      }
+      clearTimeline();
+      try {
+        reactionWS = new WebSocket(RELAY_URL);
+      } catch (err) {
+        console.error("Failed to connect to relay:", err);
+        alert("Failed to connect to relay: " + RELAY_URL);
+        return;
+      }
+      reactionWS.addEventListener("open", function() {
+        console.log("Connected to relay:", RELAY_URL);
+        if (currentTargetPubkeyForReactions) {
+          reactionWS.send(
+            JSON.stringify(["REQ", REACTION_SUB_ID, {
+              kinds: [7],
+              "#p": [currentTargetPubkeyForReactions],
+              limit: 50
+            }])
+          );
+        } else {
+          loadMoreButton.classList.remove("loading");
+        }
+      });
+      reactionWS.addEventListener("message", function(ev) {
+        try {
+          var r2cMsg = JSON.parse(ev.data);
+          switch (r2cMsg[0]) {
+            case "EVENT":
+              var nostrEv = r2cMsg[2];
+              if (!window.NostrTools.verifyEvent(nostrEv)) {
+                console.error("nostr event with invalid signature:", nostrEv);
+                return;
+              }
+              onEvent(nostrEv);
+              break;
+            case "EOSE":
+              if (r2cMsg[1] === REACTION_SUB_ID || r2cMsg[1] === MORE_REACTIONS_SUB_ID) {
+                loadMoreButton.classList.remove("loading");
+              }
+              break;
+            case "OK":
+              break;
+            case "NOTICE":
+              console.warn("Relay Notice:", r2cMsg[1]);
+              break;
+            default:
+              console.log(r2cMsg);
+              break;
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      });
+      reactionWS.addEventListener("close", onReactionWSClose);
+    }
+
+    function onReactionWSClose() {
+      console.log("Relay connection closed. Attempting to reconnect...");
+      setTimeout(subscribeToReactionRelay, 5000);
+    }
+
+    applyPubkeyForReactionsButton.addEventListener("click", function() {
+      var hexPubkey = targetHexPubkeyInput.value.trim();
+      if (hexPubkey.length === 64 && /^[0-9a-fA-F]+$/.test(hexPubkey)) {
+        currentTargetPubkeyForReactions = hexPubkey;
+        console.log("Subscribing reactions for pubkey:", currentTargetPubkeyForReactions);
+        subscribeToReactionRelay();
+      } else {
+        alert("有効なhex公開鍵を入力してください。");
+        currentTargetPubkeyForReactions = undefined;
+        clearTimeline();
+      }
+    });
+
+    var loadMoreButton = document.getElementById("load-more");
+
+    function fetchMoreReactions() {
+      if (!reactionWS || reactionWS.readyState !== WebSocket.OPEN || !currentTargetPubkeyForReactions) {
+        console.warn("Relay not connected or no target pubkey set.");
+        return;
+      }
+      loadMoreButton.classList.add("loading");
+      const filter = {
+        kinds: [7],
+        limit: 50,
+        until: oldestCreatedAt - 1,
+        "#p": [currentTargetPubkeyForReactions]
+      };
+      reactionWS.send(JSON.stringify(["REQ", MORE_REACTIONS_SUB_ID, filter]));
+    }
+    loadMoreButton.addEventListener("click", fetchMoreReactions);
+
+    document.addEventListener("DOMContentLoaded", function() {
+      subscribeToReactionRelay();
+    });
+  </script>
+</body>
+</html>
