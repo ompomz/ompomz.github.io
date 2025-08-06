@@ -94,6 +94,7 @@ button#load-more.loading {
 }
 a.pubkey-ref {
     text-decoration: none;
+    color: #B3B3B3;
 }
 a.pubkey-ref:hover {
     text-decoration: underline;
@@ -188,24 +189,19 @@ span.quote-prefix {
       timeElem.textContent = "[" + formatTimestamp(ts) + "]";
       return timeElem;
     }
-
-    // 変更点: プロファイル名を取得して表示するように修正
-function pubkeyView(pubkey) {
-  var npub = window.NostrTools.nip19.npubEncode(pubkey);
-  var displayName = profiles[pubkey] && profiles[pubkey].name ? profiles[pubkey].name : pubkey.substring(0, 8);
-  var sanitizedName = displayName.replace(/\p{Emoji_Presentation}/gu, "");
-  
-  if (sanitizedName.length > 8) {
-    sanitizedName = sanitizedName.substring(0, 8);
-  }
-  
-  var a = externalLink("https://njump.me/" + npub, sanitizedName);
-  a.classList.add("pubkey-ref");
-
-  var pubkeyHue = parseInt(pubkey.substring(0, 2), 16) * 360 / 256;
-  a.style.color = "hsl(" + pubkeyHue + ", 0%, 70%)";
-  return a;
-}
+    
+    function pubkeyView(pubkey) {
+      var npub = window.NostrTools.nip19.npubEncode(pubkey);
+      var displayName = profiles[pubkey] && profiles[pubkey].name ? profiles[pubkey].name : pubkey.substring(0, 8);
+      var sanitizedName = displayName.replace(/\p{Emoji_Presentation}/gu, "");
+        if (sanitizedName.length > 8) {
+            sanitizedName = sanitizedName.substring(0, 8);
+          }
+      var a = externalLink("https://njump.me/" + npub, sanitizedName);
+          a.classList.add("pubkey-ref");
+          
+      return a;
+    }
 
     function metadataView(nostrEv) {
       var view = document.createElement("span");
