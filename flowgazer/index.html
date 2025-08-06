@@ -70,9 +70,6 @@ label, input, button, textarea {
 }
 
 /* 投稿の種類ごとのスタイル */
-li.event.event-repost {
-    background-color: hsl(130, 100%, 95%);
-}
 li.event.event-highlighted {
     background-color: hsl(55, 100%, 93%);
     border: 1px dotted #000;
@@ -94,6 +91,7 @@ button#load-more.loading {
 }
 a.pubkey-ref {
     text-decoration: none;
+    color: #B3B3B3;
 }
 a.pubkey-ref:hover {
     text-decoration: underline;
@@ -133,18 +131,15 @@ span.quote-prefix {
     <input id="relay-url" type="text">
     <button id="subscribe-relay">Subscribe</button>
 </div>
-<br>
 <div>
-    <label for="hex-filter">投稿者pubkeyしぼりこみ（hex）</label>
+    <label for="hex-filter">投稿者pubkeyしぼりこみ（hex）↓</label>
     <p>入れなくてもいいし、<a href="https://heguro.github.io/nostr-following-list-util/" target="_blank" rel="noreferrer">NostrFluさま</a>とかから持ってきてもいいかも</p>
-    <textarea id="hex-filter" rows="3" cols="50" placeholder="hex1, hex2, ...←カンマ、改行、スペースいけます！"></textarea>
+    <textarea id="hex-filter" rows="3" cols="70" placeholder="hex1, hex2, ...←カンマ、改行、スペースいけます！"></textarea>
     <button id="apply-filter">Apply Filter</button>
 </div>
-<br>
 <div>
-    <label for="nsec">なにか言いたくなったら（どうなってもいいやつ）</label><br><input id="nsec" type="password" placeholder="nsec1..."><br><textarea id="new-post-content" rows="2" cols="50" autocomplete="off" placeholder="What the fuck is up?"></textarea><button id="send-new-post">Post</button>
-</div>
-  
+    <label for="nsec">なにか言いたくなったら（どうなってもいいやつ）↓</label><br><input id="nsec" type="password" placeholder="nsec1..."><br><textarea id="new-post-content" rows="2" cols="70" autocomplete="off" placeholder="What the fuck is up?"></textarea><button id="send-new-post">Post</button>
+</div>  
   <hr />
 
   <ul id="timeline"></ul>
@@ -188,19 +183,21 @@ span.quote-prefix {
       timeElem.textContent = "[" + formatTimestamp(ts) + "]";
       return timeElem;
     }
-
-    // 変更点: プロファイル名を取得して表示するように修正
-    function pubkeyView(pubkey) {
+    
+    function pubkeyView(pubkey) {
       var npub = window.NostrTools.nip19.npubEncode(pubkey);
-      var displayName = profiles[pubkey] && profiles[pubkey].name ? profiles[pubkey].name : pubkey.substring(0, 8);
-
-      var a = externalLink("https://njump.me/" + npub, displayName);
-      a.classList.add("pubkey-ref");
-
-      var pubkeyHue = parseInt(pubkey.substring(0, 2), 16) * 360 / 256;
-      a.style.color = "hsl(" + pubkeyHue + ", 0%, 70%)";
-      return a;
-    }
+      var displayName = profiles[pubkey] && profiles[pubkey].name ? profiles[pubkey].name : pubkey.substring(0, 8);
+      var sanitizedName = displayName.replace(/\p{Emoji_Presentation}/gu, "");
+        if (sanitizedName.length === 0) {
+            sanitizedName = pubkey.substring(0, 8);
+        } else if (sanitizedName.length > 8) {
+            sanitizedName = sanitizedName.substring(0, 8);
+        }
+      var a = externalLink("https://njump.me/" + npub, sanitizedName);
+          a.classList.add("pubkey-ref");
+          
+      return a;
+    }
 
     function metadataView(nostrEv) {
       var view = document.createElement("span");
