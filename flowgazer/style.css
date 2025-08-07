@@ -46,21 +46,29 @@ span.reply-suffix,span.repost-prefix,span.quote-prefix{font-style:italic;color:#
 .full-width{width:100%}
 .mt-1{margin-top:1rem}
 .hidden {
-  display: none !important;
+  display: none !important;
 }
 .nostr-link {
-    display: inline-block;
-    background-color: #e0f2f1; /* 淡い水色 */
-    color: #00796b; /* 濃いめの緑 */
-    padding: 6px 12px;
-    margin-bottom: 1rem;
-    border-radius: 20px;
-    text-decoration: none;
-    font-weight: bold;
-    transition: background-color 0.2s;
+    display: inline-block;
+    background-color: #e0f2f1; /* 淡い水色 */
+    color: #00796b; /* 濃いめの緑 */
+    padding: 6px 12px;
+    margin-bottom: 1rem;
+    border-radius: 20px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: background-color 0.2s;
 }
 
 .nostr-link:hover {
-    background-color: #b2dfdb; /* ホバー時の色 */
-    text-decoration: none;
+    background-color: #b2dfdb; /* ホバー時の色 */
+    text-decoration: none;
+}
+
+/* 警告メッセージのスタイル */
+#warning-message {
+    color: #d9534f; /* 赤色 */
+    font-weight: bold;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
 }
