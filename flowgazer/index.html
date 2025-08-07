@@ -51,7 +51,7 @@
 
     <div>
     <button id="generate-keypair" class="full-width">新しい鍵ペアを生成して試してみる</button>
-    <div id="keypair-area" style="display: none;">
+    <div id="keypair-area" class="hidden">
       <p><span class="key-label">秘密鍵（nsec）:</span><br>
         <input id="nsec" type="password" placeholder="nsec1..." class="full-width">
       </p>
@@ -647,9 +647,15 @@
       npubLink.textContent = keys.npub;
       npubLink.href = "https://nostter.app/" + keys.npub;
       npubLink.style.display = "inline";
-      keypairArea.style.display = "block";
+      keypairArea.classList.remove("hidden");
       nsecInput.type = "text";
       warningMessageArea.classList.remove('hidden');
+
+      // 詳細設定を非表示にし、入力欄を空にする
+      settingsArea.classList.add("hidden");
+      existingNsecInput.value = "";
+      hideSettingsBtn.classList.add("hidden");
+      showSettingsBtn.classList.remove("hidden");
     });
 
     npubLink.addEventListener("click", function(event) {
@@ -701,6 +707,11 @@
         settingsArea.classList.remove("hidden");
         showSettingsBtn.classList.add("hidden");
         hideSettingsBtn.classList.remove("hidden");
+
+        // 鍵ペア生成エリアを非表示にし、入力欄を空にする
+        keypairArea.classList.add("hidden");
+        warningMessageArea.classList.add("hidden");
+        nsecInput.value = "";
     });
 
     hideSettingsBtn.addEventListener("click", function() {
