@@ -67,8 +67,8 @@ span.reply-suffix,span.repost-prefix,span.quote-prefix{font-style:italic;color:#
 
 /* 警告メッセージのスタイル */
 #warning-message {
-    color: #d9534f; /* 赤色 */
-    font-weight: bold;
+    color: #000;
+    font-weight: normal;
     margin-top: 1rem;
     margin-bottom: 1rem;
 }
