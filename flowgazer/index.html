@@ -49,7 +49,7 @@
   <p class="header-intro">Nostrを「体験」してみて！！このページでは、鍵を作って・投稿して・タイムラインを見ることができます。
   </p>
 
-    <div>
+  <div>
     <button id="generate-keypair" class="full-width">新しい鍵ペアを生成して試してみる</button>
     <div id="keypair-area" class="hidden">
       <p><span class="key-label">秘密鍵（nsec）:</span><br>
@@ -67,11 +67,12 @@
     <button id="send-new-post" class="full-width">投稿</button>
   </div>
   
-    <div id="settings-toggle-area">
+  <div id="settings-toggle-area">
     <button id="show-settings">詳細設定を表示</button>
     <button id="hide-settings" class="hidden">詳細設定を隠す</button>
   </div>
-  <div id="advanced-settings" class="hidden"><p><span class="key-label">すでに秘密鍵を持っている方</span><br>
+  <div id="advanced-settings" class="hidden">
+    <p><span class="key-label">すでに秘密鍵を持っている方</span><br>
       <input id="existing-nsec-input" type="password" placeholder="nsec1..." class="full-width">
     </p>
     <div style="margin-bottom: 1rem;"><label for="hex-filter">投稿者pubkeyしぼりこみ（hex, npub, nprofile）</label>
@@ -92,6 +93,13 @@
   <button type="button" id="load-more" class="loading full-width">もっと見る</button>
 
   <script>
+    // ページの読み込み時に初期状態を設定する
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('warning-message').classList.add('hidden');
+      document.getElementById('keypair-area').classList.add('hidden');
+      document.getElementById('hide-settings').classList.add('hidden');
+      document.getElementById('advanced-settings').classList.add('hidden');
+    });
     // ここから既存のスクリプトを貼り付け
     function formatTimestamp(date) {
       return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0") + ":" + String(date.getSeconds()).padStart(2, "0");
@@ -708,7 +716,7 @@
         showSettingsBtn.classList.add("hidden");
         hideSettingsBtn.classList.remove("hidden");
 
-        // 鍵ペア生成エリアを非表示にし、入力欄を空にする
+        // 鍵ペア生成エリアと警告メッセージを非表示にする
         keypairArea.classList.add("hidden");
         warningMessageArea.classList.add("hidden");
         nsecInput.value = "";
