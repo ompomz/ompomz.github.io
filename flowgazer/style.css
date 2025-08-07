@@ -1,0 +1,66 @@
+/* リセットCSS */
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";padding:16px;line-height:1.6;font-weight:normal;background-color:#f7f7f7;color:#333}
+h4,p,div{margin-bottom:.5rem}
+/* ヘッダーセクション */
+h4{font-size:1.5rem;color:#555;margin-bottom:1rem}
+p{font-size:.9rem;color:#666}
+a{color:#007bff}
+a:hover{text-decoration:none}
+.header-intro{font-size:1rem;margin-bottom:1.5rem}
+/* フォームとボタンの基本スタイル */
+label,input,button,textarea{vertical-align:middle;font-size:1rem}
+input[type="text"],input[type="password"],textarea{border:1px solid #ccc;padding:8px;border-radius:4px;width:100%;margin-top:4px;margin-bottom:8px}
+textarea#hex-filter{font-size:.8rem}
+button{border:none;padding:10px 20px;border-radius:20px;color:white;cursor:pointer;font-weight:bold;transition:background-color .2s}
+/* ポップで目に優しい色調 */
+button#generate-keypair{background-color:#ff99cc}
+button#generate-keypair:hover{background-color:#ff66b2}
+button#send-new-post{background-color:#ffb366}
+button#send-new-post:hover{background-color:#ffa347}
+button#subscribe-relay,button#apply-filter{background-color:#ffd700}
+button#subscribe-relay:hover,button#apply-filter:hover{background-color:#ffc400}
+button#show-settings,button#hide-settings{background-color:#aaa;font-size:.8rem;padding:6px 12px}
+button#load-more{background-color:#66b3ff}
+button#load-more:hover{background-color:#4da6ff}
+/* 鍵ペア表示エリア */
+#keypair-area{background-color:#fff;border:1px dashed #ddd;padding:12px;margin-top:8px;border-radius:8px}
+.key-label{font-weight:bold}
+.npub-link{cursor:pointer;text-decoration:underline;color:#ff66b2}
+/* タイムラインのリストスタイル */
+ul#timeline{padding-left:0;margin:16px 0;border-top:1px solid #eee}
+li.event{list-style:none;word-break:break-all;padding:12px 0;border-bottom:1px solid #eee}
+/* 投稿内のスタイル */
+li.event.event-highlighted{background-color:#fff3e0}
+.pubkey-ref{font-weight:bold}
+a.pubkey-ref{text-decoration:none;color:#555}
+a.pubkey-ref:hover{text-decoration:underline}
+.nostr-ref{background-color:#e3f2fd;padding:2px 4px;border-radius:4px}
+.pubkey-mention::before{content:"@"}
+img.custom-emoji{vertical-align:middle;height:24px;width:auto}
+span.reply-suffix,span.repost-prefix,span.quote-prefix{font-style:italic;color:#888}
+/* 詳細設定エリア */
+#advanced-settings{margin-bottom:1rem;background-color:#fff;border:1px solid #e0e0e0;padding:16px;border-radius:8px}
+#settings-toggle-area{text-align:center;margin-top:1rem;margin-bottom:1rem}
+/* ユーティリティ */
+.full-width{width:100%}
+.mt-1{margin-top:1rem}
+.hidden {
+  display: none !important;
+}
+.nostr-link {
+    display: inline-block;
+    background-color: #e0f2f1; /* 淡い水色 */
+    color: #00796b; /* 濃いめの緑 */
+    padding: 6px 12px;
+    margin-bottom: 1rem;
+    border-radius: 20px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.nostr-link:hover {
+    background-color: #b2dfdb; /* ホバー時の色 */
+    text-decoration: none;
+}
