@@ -71,9 +71,9 @@ a:hover {
 /* PC向けのスタイル */
 .container {
   max-width: 600px;
-  margin-left: 16px; /* 左揃えにして、左側に16pxの余白を設ける */
+  margin-left: .5rem;
   margin-right: auto;
-  padding: 16px;
+  padding: .5rem;
 }
 
 /* スマホ向けのスタイル */
