@@ -43,11 +43,12 @@ npub: window.NostrTools.nip19.npubEncode(pubkey)
 </script>
 </head>
 <body>
+<div class="container">
 <div class="header-container">
 <a href="https://github.com/ompomz/ompomz.github.io/tree/main/flowgazer"><h4>flowgazer -kindness edition-</h4></a><a href="index2.html" class="nostr-link">Nostrって？</a></div>
 <p class="header-intro">Nostrを「体験」してみてほしい！！<br>このページでは、鍵を作って・投稿して・タイムラインを見ることができるよ。作ったのはGemini。</p>
 
-<div class="container">
+<div>
 <button id="generate-keypair" class="full-width">新しい鍵ペアを生成して試す</button>
 <div id="keypair-area">
 <p><span class="key-label">秘密鍵（nsec）:</span><br>
@@ -78,6 +79,7 @@ npub: window.NostrTools.nip19.npubEncode(pubkey)
 <div class="flex-container">
 <textarea id="hex-filter" rows="3" placeholder="hex, npub1..., ..."></textarea>
 <button id="apply-filter">適用</button>
+</div>
 </div>
 </div>
 
