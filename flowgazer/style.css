@@ -1,74 +1,282 @@
-/* リセットCSS */
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";padding:16px;line-height:1.6;font-weight:normal;background-color:#f7f7f7;color:#333}
-h4,p,div{margin-bottom:.5rem}
-/* ヘッダーセクション */
-h4{font-size:1.5rem;color:#555;margin-bottom:1rem}
-p{font-size:.9rem;color:#666}
-a{color:#007bff}
-a:hover{text-decoration:none}
-.header-intro{font-size:1rem;margin-bottom:1.5rem}
-/* フォームとボタンの基本スタイル */
-label,input,button,textarea{vertical-align:middle;font-size:1rem}
-input[type="text"],input[type="password"],textarea{border:1px solid #ccc;padding:8px;border-radius:4px;width:100%;margin-top:4px;margin-bottom:8px}
-textarea#hex-filter{font-size:.8rem}
-button{border:none;padding:10px 20px;border-radius:20px;color:white;cursor:pointer;font-weight:bold;transition:background-color .2s}
-/* ポップで目に優しい色調 */
-button#generate-keypair{background-color:#ff99cc}
-button#generate-keypair:hover{background-color:#ff66b2}
-button#send-new-post{background-color:#ffb366}
-button#send-new-post:hover{background-color:#ffa347}
-button#subscribe-relay,button#apply-filter{background-color:#ffd700}
-button#subscribe-relay:hover,button#apply-filter:hover{background-color:#ffc400}
-button#show-settings,button#hide-settings{background-color:#aaa;font-size:.8rem;padding:6px 12px}
-button#load-more{background-color:#66b3ff}
-button#load-more:hover{background-color:#4da6ff}
-/* 鍵ペア表示エリア */
-#keypair-area{background-color:#fff;border:1px dashed #ddd;padding:12px;margin-top:8px;border-radius:8px}
-.key-label{font-weight:bold}
-.npub-link{cursor:pointer;text-decoration:underline;color:#ff66b2}
-/* タイムラインのリストスタイル */
-ul#timeline{padding-left:0;margin:16px 0;border-top:1px solid #eee}
-li.event{list-style:none;word-break:break-all;padding:12px 0;border-bottom:1px solid #eee}
-/* 投稿内のスタイル */
-li.event.event-highlighted{background-color:#fff3e0}
-.pubkey-ref{font-weight:bold}
-a.pubkey-ref{text-decoration:none;color:#555}
-a.pubkey-ref:hover{text-decoration:underline}
-.nostr-ref{background-color:#e3f2fd;padding:2px 4px;border-radius:4px}
-.pubkey-mention::before{content:"@"}
-img.custom-emoji{vertical-align:middle;height:24px;width:auto}
-span.reply-suffix,span.repost-prefix,span.quote-prefix{font-style:italic;color:#888}
-/* 詳細設定エリア */
-#advanced-settings{margin-bottom:1rem;background-color:#fff;border:1px solid #e0e0e0;padding:16px;border-radius:8px}
-#settings-toggle-area{text-align:center;margin-top:1rem;margin-bottom:1rem}
-/* ユーティリティ */
-.full-width{width:100%}
-.mt-1{margin-top:1rem}
-.hidden {
-  display: none !important;
+/* リセットと基本スタイル */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  padding: 8px;
+  line-height: 1.3;
+  font-weight: normal;
+  background-color: #f7f7f7;
+  color: #333;
+}
+
+h4 {
+  font-size: 1.25rem;
+  color: #555;
+  margin-bottom: .5rem;
+}
+
+p {
+  font-size: .9rem;
+  color: #666;
+  margin-bottom: .25rem;
+}
+
+a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ヘッダーセクション */
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .5rem;
+}
+
+.header-container h4 {
+  margin: 0; /* 親要素で間隔を調整するため、h4のマージンをリセット */
+}
+
+.header-intro {
+  font-size: 1rem;
+  margin-bottom: .75rem;
+}
+
 .nostr-link {
-    display: inline-block;
-    background-color: #e0f2f1; /* 淡い水色 */
-    color: #00796b; /* 濃いめの緑 */
-    padding: 6px 12px;
-    margin-bottom: 1rem;
-    border-radius: 20px;
-    text-decoration: none;
-    font-weight: bold;
-    transition: background-color 0.2s;
+  display: inline-block;
+  background-color: #e0f2f1;
+  color: #00796b;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+  white-space: nowrap; /* テキストが折り返されないように */
 }
 
 .nostr-link:hover {
-    background-color: #b2dfdb; /* ホバー時の色 */
-    text-decoration: none;
+  background-color: #b2dfdb;
+  text-decoration: none;
 }
 
-/* 警告メッセージのスタイル */
-#warning-message {
-    color: #000;
-    font-weight: normal;
-    margin-top: 1rem;
-    margin-bottom: 1rem;
+/* メインコンテンツとフォーム */
+.full-width {
+  width: 100%;
+}
+
+.mt-1 {
+  margin-top: .5rem;
+}
+
+label {
+  font-size: .9rem;
+  color: #666;
+}
+
+input[type="text"], textarea {
+  border: 1px solid #ccc;
+  padding: 6px;
+  border-radius: 4px;
+  margin-top: 2px;
+  margin-bottom: 4px;
+}
+
+#new-post-content {
+  resize: vertical; /* 投稿エリアのリサイズを許可 */
+}
+
+#keypair-area {
+  background-color: #fff;
+  border: 1px dashed #ddd;
+  padding: 8px;
+  margin-top: 4px;
+  border-radius: 8px;
+}
+
+.key-label {
+  font-weight: bold;
+}
+
+.npub-link {
+  color: #ff66b2;
+}
+
+/* ボタンのスタイル */
+button {
+  border: none;
+  padding: 6px 12px;
+  border-radius: 20px;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color .2s;
+}
+
+button#generate-keypair {
+  background-color: #ff99cc;
+}
+
+button#generate-keypair:hover {
+  background-color: #ff66b2;
+}
+
+button#send-new-post {
+  background-color: #ffb366;
+}
+
+button#send-new-post:hover {
+  background-color: #ffa347;
+}
+
+button#load-more {
+  background-color: #66b3ff;
+}
+
+button#load-more:hover {
+  background-color: #4da6ff;
+}
+
+/* 詳細設定エリア */
+#settings-toggle-area {
+  text-align: center;
+  margin: .5rem 0;
+}
+
+#show-settings,
+#hide-settings {
+  background-color: #aaa;
+  font-size: .7rem;
+  padding: 4px 8px;
+}
+
+#advanced-settings {
+  margin-bottom: .5rem;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+#relay-url-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: .5rem;
+}
+
+#relay-url-container label {
+  white-space: nowrap;
+}
+
+#relay-url-container input {
+  flex-grow: 1;
+  margin-bottom: 0;
+}
+
+#subscribe-relay {
+  background-color: #ffd700;
+  white-space: nowrap;
+  min-width: 70px;
+}
+
+#subscribe-relay:hover {
+  background-color: #ffc400;
+}
+
+.flex-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+#hex-filter {
+  flex-grow: 1;
+  font-size: .7rem;
+  margin-bottom: 0;
+}
+
+#apply-filter {
+  background-color: #ffd700;
+  white-space: nowrap;
+  min-width: 70px;
+}
+
+#apply-filter:hover {
+  background-color: #ffc400;
+}
+
+/* タイムラインのリスト */
+hr {
+  border: none;
+  border-top: 1px solid #ccc;
+  margin: 16px 0;
+}
+
+ul#timeline {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+  border-top: 1px solid #eee;
+}
+
+li.event {
+  word-break: break-all;
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+}
+
+li.event-highlighted {
+  background-color: #fff3e0;
+}
+
+/* 投稿内のスタイル */
+time {
+  color: #888;
+}
+
+a.pubkey-ref {
+  font-weight: bold;
+  color: #555;
+}
+
+a.pubkey-ref:hover {
+  text-decoration: underline;
+}
+
+.nostr-ref {
+  background-color: #e3f2fd;
+  padding: 1px 2px;
+  border-radius: 4px;
+}
+
+.pubkey-mention::before {
+  content: "@";
+}
+
+img.custom-emoji {
+  vertical-align: middle;
+  height: 20px;
+  width: auto;
+}
+
+span.reply-suffix,
+span.repost-prefix,
+span.quote-prefix {
+  font-style: italic;
+  color: #888;
+}
+
+/* ユーティリティ */
+.hidden {
+  display: none !important;
 }
