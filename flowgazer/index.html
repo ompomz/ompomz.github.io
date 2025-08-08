@@ -90,10 +90,25 @@ npub: window.NostrTools.nip19.npubEncode(pubkey)
     <script>
     // ページの読み込み時に初期状態を設定する
     window.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('hide-settings').classList.add('hidden');
-      document.getElementById('advanced-settings').classList.add('hidden');
-      document.getElementById('npub-link').style.display = 'none'; // npub-linkの初期状態を非表示にする
-    });
+    document.getElementById('hide-settings').classList.add('hidden');
+    document.getElementById('advanced-settings').classList.add('hidden');
+    document.getElementById('npub-link').style.display = 'none'; // npub-linkの初期状態を非表示にする
+
+    // ページ内のすべてのaタグを取得
+    const links = document.querySelectorAll('a');
+
+    // それぞれのリンクに対して処理を実行
+    links.forEach(link => {
+        // target属性が設定されていない、またはすでに_selfでないリンクのみを対象とする
+        if (!link.target || link.target === '_self') {
+            link.setAttribute('target', '_blank');
+        }
+        // rel="noopener noreferrer"を追加してセキュリティを強化
+        if (!link.rel) {
+            link.setAttribute('rel', 'noopener noreferrer');
+        }
+    });
+});
     // ここから既存のスクリプトを貼り付け
     function formatTimestamp(date) {
       return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0") + ":" + String(date.getSeconds()).padStart(2, "0");
