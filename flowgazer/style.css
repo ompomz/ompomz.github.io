@@ -68,6 +68,12 @@ a:hover {
   text-decoration: none;
 }
 
+.container {
+  max-width: 600px; /* PCでの表示幅を600pxに制限 */
+  margin: 0 auto; /* 左右の中央寄せ */
+  padding: 16px; /* コンテナ内の余白を確保 */
+}
+
 /* メインコンテンツとフォーム */
 .full-width {
   width: 100%;
