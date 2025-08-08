@@ -68,10 +68,21 @@ a:hover {
   text-decoration: none;
 }
 
+/* PC向けのスタイル */
 .container {
-  max-width: 600px; /* PCでの表示幅を600pxに制限 */
-  margin: 0 auto; /* 左右の中央寄せ */
-  padding: 16px; /* コンテナ内の余白を確保 */
+  max-width: 600px;
+  margin-left: 16px; /* 左揃えにして、左側に16pxの余白を設ける */
+  margin-right: auto;
+  padding: 16px;
+}
+
+/* スマホ向けのスタイル */
+@media (max-width: 767px) {
+  .container {
+    max-width: 100%;
+    padding: 8px;
+    margin: 0; /* 余白をなくして画面いっぱいに */
+  }
 }
 
 /* メインコンテンツとフォーム */
