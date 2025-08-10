@@ -254,6 +254,7 @@ button#load-more:hover {
 
 .flex-container {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     margin-top: 2px;
@@ -341,10 +342,27 @@ span.quote-prefix {
     display: none !important;
 }
 
-/* 新しい閉じるボタンのスタイル */
 .nostr-link-close {
-    position: fixed; 
-    top: 8px; 
+    display: flex; /* 追加: 中央揃えのため */
+    align-items: center; /* 追加: 中央揃えのため */
+    justify-content: center; /* 追加: 中央揃えのため */
+    width: 28px;  /* 追加: 正方形にする */
+    height: 28px; /* 追加: 正方形にする */
+    border-radius: 50%; /* 修正: これで円形になります */
+    
+    /* 位置はfixedのままでOK */
+    position: fixed;
+    top: 8px;
     right: 8px;
-    padding: 2px 4px;
+
+    /* 色やホバー時のスタイルも調整 */
+    background-color: #e0f2f1;
+    color: #00796b;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.nostr-link-close:hover {
+    background-color: #b2dfdb;
+    text-decoration: none;
 }
