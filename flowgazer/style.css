@@ -1,299 +1,342 @@
 /* リセットと基本スタイル */
 * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  padding: 8px;
-  line-height: 1.3;
-  font-weight: normal;
-  background-color: #f7f7f7;
-  color: #333;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    padding: 8px;
+    line-height: 1.3;
+    font-weight: normal;
+    background-color: #f7f7f7;
+    color: #333;
 }
 
 h4 {
-  font-size: 1.25rem;
-  color: #555;
-  margin-bottom: .5rem;
+    font-size: 1.25rem;
+    color: #555;
+    margin-bottom: .5rem;
 }
 
 p {
-  font-size: .9rem;
-  color: #666;
-  margin-bottom: .25rem;
+    font-size: .9rem;
+    color: #666;
+    margin-bottom: .25rem;
 }
 
 a {
-  color: #007bff;
-  text-decoration: none;
+    color: #007bff;
+    text-decoration: none;
 }
 
 a:hover {
-  text-decoration: underline;
+    text-decoration: underline;
 }
 
 /* ヘッダーセクション */
 .header-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: .5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: .5rem;
 }
 
 .header-container h4 {
-  margin: 0; /* 親要素で間隔を調整するため、h4のマージンをリセット */
+    margin: 0; /* 親要素で間隔を調整するため、h4のマージンをリセット */
 }
 
 .header-intro {
-  font-size: 1rem;
-  margin-bottom: .75rem;
+    font-size: 1rem;
+    margin-bottom: .75rem;
 }
 
 .nostr-link {
-  display: inline-block;
-  background-color: #e0f2f1;
-  color: #00796b;
-  padding: 4px 8px;
-  border-radius: 20px;
-  font-weight: bold;
-  transition: background-color 0.2s;
-  white-space: nowrap; /* テキストが折り返されないように */
+    display: inline-block;
+    background-color: #e0f2f1;
+    color: #00796b;
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-weight: bold;
+    transition: background-color 0.2s;
+    white-space: nowrap; /* テキストが折り返されないように */
 }
 
 .nostr-link:hover {
-  background-color: #b2dfdb;
-  text-decoration: none;
+    background-color: #b2dfdb;
+    text-decoration: none;
 }
 
 /* PC向けのスタイル */
 .container {
-  max-width: 600px;
-  margin-left: .5rem;
-  margin-right: auto;
-  padding: .5rem;
+    max-width: 600px;
+    margin-left: .5rem;
+    margin-right: auto;
+    padding: .5rem;
 }
 
 /* スマホ向けのスタイル */
 @media (max-width: 767px) {
-  .container {
-    max-width: 100%;
-    padding: 8px;
-    margin: 0; /* 余白をなくして画面いっぱいに */
-  }
+    .container {
+        max-width: 100%;
+        padding: 8px;
+        margin: 0; /* 余白をなくして画面いっぱいに */
+    }
 }
 
 /* メインコンテンツとフォーム */
 .full-width {
-  width: 100%;
+    width: 100%;
 }
 
 .mt-1 {
-  margin-top: .5rem;
+    margin-top: .5rem;
 }
 
 label {
-  font-size: .9rem;
-  color: #666;
+    font-size: .9rem;
+    color: #666;
 }
 
-input[type="text"], textarea {
-  border: 1px solid #ccc;
-  padding: 6px;
-  border-radius: 4px;
-  margin-top: 2px;
-  margin-bottom: 4px;
+input[type="text"],
+textarea {
+    border: 1px solid #ccc;
+    padding: 6px;
+    border-radius: 4px;
+    margin-top: 2px;
+    margin-bottom: 4px;
 }
 
 #new-post-content {
-  resize: vertical; /* 投稿エリアのリサイズを許可 */
+    resize: vertical; /* 投稿エリアのリサイズを許可 */
 }
 
 #keypair-area {
-  background-color: #fff;
-  border: 1px dashed #ddd;
-  padding: 8px;
-  margin-top: 4px;
-  border-radius: 8px;
+    background-color: #fff;
+    border: 1px dashed #ddd;
+    padding: 8px;
+    margin-top: 4px;
+    border-radius: 8px;
 }
 
 .key-label {
-  font-weight: bold;
+    font-weight: bold;
 }
 
 .npub-link {
-  color: #ff66b2;
+    color: #ff66b2;
 }
 
-/* ボタンのスタイル */
+/* ボタンの共通スタイル */
 button {
-  border: none;
-  padding: 6px 12px;
-  border-radius: 20px;
-  color: white;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color .2s;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 20px;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color .2s;
 }
 
-button#generate-keypair {
-  background-color: #ff99cc;
+/* 新しい鍵ペア生成ボタンと「拡張機能から取得」ボタンのスタイル */
+.key-buttons-container {
+    display: flex; /* ボタンを横並びにする */
+    gap: 10px; /* ボタン間の余白 */
+    margin-bottom: 10px; /* 下に余白を作る */
 }
 
-button#generate-keypair:hover {
-  background-color: #ff66b2;
+#generate-keypair {
+    background-color: #ff99cc; /* ピンク色 */
 }
 
-button#send-new-post {
-  background-color: #ffb366;
+#generate-keypair:hover {
+    background-color: #ff66b2;
 }
 
-button#send-new-post:hover {
-  background-color: #ffa347;
+#get-from-extension {
+    background-color: #66b3ff; /* 水色 */
+}
+
+#get-from-extension:hover {
+    background-color: #4da6ff;
+}
+
+/* 投稿ボタン群のコンテナスタイル */
+.post-buttons-container {
+    display: flex; /* ボタンを横並びにする */
+    gap: 10px; /* ボタン間の余白 */
+}
+
+/* 投稿ボタンの共通スタイル */
+.post-button {
+    flex: 1; /* ボタンの幅を均等に広げる */
+    text-align: center;
+    border: none;
+    background-color: #f0f0f0;
+    color: white;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 20px;
+    transition: background-color 0.2s;
+}
+
+.post-button:hover {
+    background-color: #e0e0e0;
+}
+
+/* 投稿ボタンの `button` タグに適用するスタイル */
+#send-new-post {
+    background-color: #ffb366; /* オレンジ色 */
+}
+
+#send-new-post:hover {
+    background-color: #ffa347;
 }
 
 button#load-more {
-  background-color: #66b3ff;
+    background-color: #66b3ff;
 }
 
 button#load-more:hover {
-  background-color: #4da6ff;
+    background-color: #4da6ff;
 }
 
 /* 詳細設定エリア */
 #settings-toggle-area {
-  text-align: center;
-  margin: .5rem 0;
+    text-align: center;
+    margin: .5rem 0;
 }
 
 #show-settings,
 #hide-settings {
-  background-color: #aaa;
-  font-size: .7rem;
-  padding: 4px 8px;
+    background-color: #aaa;
+    font-size: .7rem;
+    padding: 4px 8px;
 }
 
 #advanced-settings {
-  margin-bottom: .5rem;
-  background-color: #fff;
-  border: 1px solid #e0e0e0;
-  padding: 8px;
-  border-radius: 8px;
+    margin-bottom: .5rem;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    padding: 8px;
+    border-radius: 8px;
 }
 
 #relay-url-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: .5rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: .5rem;
 }
 
 #relay-url-container label {
-  white-space: nowrap;
+    white-space: nowrap;
 }
 
 #relay-url-container input {
-  flex-grow: 1;
-  margin-bottom: 0;
+    flex-grow: 1;
+    margin-bottom: 0;
 }
 
 #subscribe-relay {
-  background-color: #ffd700;
-  white-space: nowrap;
-  min-width: 70px;
+    background-color: #ffd700;
+    white-space: nowrap;
+    min-width: 70px;
 }
 
 #subscribe-relay:hover {
-  background-color: #ffc400;
+    background-color: #ffc400;
 }
 
 .flex-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
 }
 
 #hex-filter {
-  flex-grow: 1;
-  font-size: .7rem;
-  margin-bottom: 0;
+    flex-grow: 1;
+    font-size: .7rem;
+    margin-bottom: 0;
 }
 
 #apply-filter {
-  background-color: #ffd700;
-  white-space: nowrap;
-  min-width: 70px;
+    background-color: #ffd700;
+    white-space: nowrap;
+    min-width: 70px;
 }
 
 #apply-filter:hover {
-  background-color: #ffc400;
+    background-color: #ffc400;
 }
 
 /* タイムラインのリスト */
 hr {
-  border: none;
-  border-top: 1px solid #ccc;
-  margin: 16px 0;
+    border: none;
+    border-top: 1px solid #ccc;
+    margin: 16px 0;
 }
 
 ul#timeline {
-  list-style: none;
-  padding: 0;
-  margin: 8px 0;
-  border-top: 1px solid #eee;
+    list-style: none;
+    padding: 0;
+    margin: 8px 0;
+    border-top: 1px solid #eee;
 }
 
 li.event {
-  word-break: break-all;
-  padding: 6px 0;
-  border-bottom: 1px solid #eee;
+    word-break: break-all;
+    padding: 6px 0;
+    border-bottom: 1px solid #eee;
 }
 
 li.event-highlighted {
-  background-color: #fff3e0;
+    background-color: #fff3e0;
 }
 
 /* 投稿内のスタイル */
 time {
-  color: #888;
+    color: #888;
 }
 
 a.pubkey-ref {
-  font-weight: bold;
-  color: #555;
+    font-weight: bold;
+    color: #555;
 }
 
 a.pubkey-ref:hover {
-  text-decoration: underline;
+    text-decoration: underline;
 }
 
 .nostr-ref {
-  background-color: #e3f2fd;
-  padding: 1px 2px;
-  border-radius: 4px;
+    background-color: #e3f2fd;
+    padding: 1px 2px;
+    border-radius: 4px;
 }
 
 .pubkey-mention::before {
-  content: "@";
+    content: "@";
 }
 
 img.custom-emoji {
-  vertical-align: middle;
-  height: 20px;
-  width: auto;
+    vertical-align: middle;
+    height: 20px;
+    width: auto;
 }
 
 span.reply-suffix,
 span.repost-prefix,
 span.quote-prefix {
-  font-style: italic;
-  color: #888;
+    font-style: italic;
+    color: #888;
 }
 
 /* ユーティリティ */
 .hidden {
-  display: none !important;
+    display: none !important;
 }
