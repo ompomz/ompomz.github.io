@@ -343,8 +343,8 @@ span.quote-prefix {
 
 /* 新しい閉じるボタンのスタイル */
 .nostr-link-close {
-  position: fixed;
-  top: 8px;
-  right: 8px;
-  padding: 4px;
+    position: fixed; 
+    top: 8px; 
+    right: 8px;
+    padding: 2px 4px;
 }
