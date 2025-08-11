@@ -175,11 +175,11 @@
             </div>
 
             <h3 class="mt-20">公開リスト</h3>
-            <p class="info-text">これらの鍵は**pタグ**に含まれ、公開されます。</p>
+            <p class="info-text">これらの鍵は**pタグ**に含まれ、公開されます。<br>カンマ、スペース、タブ、改行で区切って入力できます。</p>
             <textarea id="public-pubkeys-textarea" placeholder="公開リストの公開鍵を1行に1つ入力してください"></textarea>
 
             <h3 class="mt-20">非公開リスト</h3>
-            <p class="info-text">これらの鍵は**content（暗号化）**にのみ含まれ、非公開で保存されます。</p>
+            <p class="info-text">これらの鍵は**content（暗号化）**にのみ含まれ、非公開で保存されます。<br>カンマ、スペース、タブ、改行で区切って入力できます。</p>
             <textarea id="private-pubkeys-textarea" placeholder="非公開リストの公開鍵を1行に1つ入力してください"></textarea>
             
             <button id="preview-button">JSONイベントをプレビュー</button>
@@ -221,6 +221,8 @@
             let allEvents = [];
             let currentPubkey = null;
             let selectedEventId = null;
+            let originalDTag = null; // 元のdタグを保持
+            let originalTitleTag = null; // 元のtitleタグを保持
 
             const PUBLIC_RELAY = 'wss://relay.nostr.band';
 
@@ -392,6 +394,9 @@
                 privatePubkeysTextarea.value = '';
                 eventInfo.textContent = '';
                 previewSection.classList.add('hidden');
+                
+                originalDTag = null;
+                originalTitleTag = null;
 
                 if (selectedId === 'new') {
                     updateStatus('新しいリストを作成する準備ができました。', 'info');
@@ -407,7 +412,11 @@
                 
                 const dTag = eventToEdit.tags.find(tag => tag[0] === 'd');
                 const titleTag = eventToEdit.tags.find(tag => tag[0] === 'title');
-                eventInfo.textContent = `d-tag: ${dTag ? dTag[1] : 'なし'} / title-tag: ${titleTag ? titleTag[1] : 'なし'}`;
+                
+                originalDTag = dTag ? dTag[1] : null;
+                originalTitleTag = titleTag ? titleTag[1] : null;
+
+                eventInfo.textContent = `d-tag: ${originalDTag || 'なし'} / title-tag: ${originalTitleTag || 'なし'}`;
 
                 const publicPubkeys = eventToEdit.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]);
                 publicPubkeysTextarea.value = publicPubkeys.join('\n');
@@ -450,6 +459,7 @@
                     return;
                 }
 
+                // 入力欄の値を、カンマ、スペース、タブ、改行で分割して配列に
                 const publicPubkeys = publicPubkeysTextarea.value.split(/,|\t| |\n/).map(s => s.trim()).filter(s => s.length > 0);
                 const privatePubkeys = privatePubkeysTextarea.value.split(/,|\t| |\n/).map(s => s.trim()).filter(s => s.length > 0);
 
@@ -465,16 +475,24 @@
                     const encryptedContent = await window.nostr.nip44.encrypt(currentPubkey, JSON.stringify({ p: privatePubkeys }));
                     
                     let newTags = [];
+                    // 既存のd-tagとtitle-tagがあれば、新しいタグに含める
+                    if (originalDTag) {
+                        newTags.push(['d', originalDTag]);
+                    } else if (selectedEventId === 'new') {
+                        // 新規作成の場合はデフォルトのdタグを設定
+                        newTags.push(['d', 'follow-list']);
+                    }
+                    if (originalTitleTag) {
+                        newTags.push(['title', originalTitleTag]);
+                    }
+                    
+                    // その他のタグを保持
                     if (selectedEventId !== 'new') {
                         const existingEvent = allEvents.find(e => e.id === selectedEventId);
                         if (existingEvent) {
-                            newTags = existingEvent.tags.filter(tag => tag[0] !== 'p' && tag[0] !== 'd' && tag[0] !== 'title');
+                            existingEvent.tags.filter(tag => tag[0] !== 'p' && tag[0] !== 'd' && tag[0] !== 'title')
+                                .forEach(tag => newTags.push(tag));
                         }
-                    }
-                    
-                    const dTagValue = 'follow-list';
-                    if (!newTags.some(tag => tag[0] === 'd')) {
-                        newTags.push(['d', dTagValue]);
                     }
 
                     publicPubkeys.forEach(pk => {
