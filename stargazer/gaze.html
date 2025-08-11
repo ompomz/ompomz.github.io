@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nostr フォローセットエディター</title>
+    <title>Nostr フォローセットエディター（プロフィール名表示）</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -18,6 +18,13 @@
         }
         #controls {
             margin-bottom: 20px;
+        }
+        #event-select {
+            padding: 8px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            margin-right: 10px;
         }
         #profiles-container {
             list-style: none;
@@ -40,9 +47,19 @@
         .profile-item:hover {
             background-color: #f9f9f9;
         }
-        .profile-pubkey {
+        .profile-info {
+            display: flex;
+            flex-direction: column;
             margin-left: 10px;
+        }
+        .profile-name {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .profile-pubkey {
             font-family: monospace;
+            font-size: 0.9em;
+            color: #666;
             word-break: break-all;
         }
         .drag-handle {
@@ -57,6 +74,7 @@
             border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.2s;
+            margin-top: 10px;
         }
         #load-button {
             background-color: #3498db;
@@ -83,6 +101,11 @@
             opacity: 0.5;
             background-color: #e0f7fa;
         }
+        .event-info {
+            font-size: 0.9em;
+            color: #555;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -91,8 +114,13 @@
 
     <div id="controls">
         <button id="load-button">フォローリストを読み込む</button>
+        <div id="event-selector-container" class="hidden">
+            <p>編集するリストを選択してください：</p>
+            <select id="event-select"></select>
+            <p class="event-info"></p>
+        </div>
         <button id="save-button" class="hidden">変更を保存する</button>
-        <p class="info-text">※ NIP-07対応の拡張機能（nos2xなど）が必要です。</p>
+        <p class="info-text">※ NIP-07対応の拡張機能と `wss://relay.nostr.band` への接続が必要です。</p>
     </div>
 
     <ul id="profiles-container">
@@ -105,7 +133,14 @@
             const profilesContainer = document.getElementById('profiles-container');
             const loadButton = document.getElementById('load-button');
             const saveButton = document.getElementById('save-button');
-            let originalEvent = null; // 読み込んだ元のイベントを保持
+            const eventSelect = document.getElementById('event-select');
+            const eventSelectorContainer = document.getElementById('event-selector-container');
+            const eventInfo = document.querySelector('.event-info');
+
+            const RELAY_URL = 'wss://relay.nostr.band';
+            let allEvents = [];
+            let currentEvent = null;
+            let profileCache = {}; // プロフィール情報をキャッシュするオブジェクト
 
             // Sortable.js を初期化
             new Sortable(profilesContainer, {
@@ -120,38 +155,112 @@
                     return;
                 }
 
-                const pubkey = await window.nostr.getPublicKey();
-                const relay = 'wss://yabu.me'; // 読み込みたいリレーを指定
+                allEvents = [];
+                profilesContainer.innerHTML = '';
+                eventSelectorContainer.classList.add('hidden');
+                saveButton.classList.add('hidden');
 
-                const ws = new WebSocket(relay);
+                const pubkey = await window.nostr.getPublicKey();
+                const ws = new WebSocket(RELAY_URL);
+
                 ws.onopen = () => {
                     const filter = {
                         kinds: [30000],
                         authors: [pubkey]
                     };
-                    ws.send(JSON.stringify(["REQ", "my-follow-set", filter]));
+                    ws.send(JSON.stringify(["REQ", "my-follow-set-req", filter]));
                 };
 
-                ws.onmessage = async (event) => {
+                ws.onmessage = (event) => {
                     const data = JSON.parse(event.data);
-                    if (data[0] === "EVENT" && data[1] === "my-follow-set") {
+                    if (data[0] === "EVENT") {
                         const nostrEvent = data[2];
-                        originalEvent = nostrEvent;
-
-                        try {
-                            const decryptedContent = await window.nostr.nip04.decrypt(pubkey, nostrEvent.content);
-                            const followList = JSON.parse(decryptedContent);
-                            renderProfiles(followList);
-                            saveButton.classList.remove('hidden');
-                        } catch (error) {
-                            console.error('復号に失敗しました:', error);
-                            alert('復号に失敗しました。このリストはあなたのものではないかもしれません。');
-                        } finally {
-                            ws.close();
+                        allEvents.push(nostrEvent);
+                    } else if (data[0] === "EOSE") {
+                        ws.close();
+                        if (allEvents.length === 0) {
+                            alert('kind:30000のフォローリストが見つかりませんでした。');
+                            return;
                         }
+                        
+                        renderEventSelector(allEvents);
+                        eventSelectorContainer.classList.remove('hidden');
+                        saveButton.classList.remove('hidden');
                     }
                 };
             });
+
+            // イベント選択肢をレンダリングする関数
+            function renderEventSelector(events) {
+                eventSelect.innerHTML = '';
+                events.forEach(event => {
+                    const option = document.createElement('option');
+                    const dTag = event.tags.find(tag => tag[0] === 'd');
+                    const titleTag = event.tags.find(tag => tag[0] === 'title');
+                    const eventTitle = titleTag ? titleTag[1] : (dTag ? dTag[1] : `ID: ${event.id.slice(0, 8)}...`);
+                    
+                    option.textContent = eventTitle;
+                    option.value = event.id;
+                    eventSelect.appendChild(option);
+                });
+                
+                eventSelect.dispatchEvent(new Event('change'));
+            }
+
+            // イベントが選択されたときの処理
+            eventSelect.addEventListener('change', async () => {
+                const selectedId = eventSelect.value;
+                currentEvent = allEvents.find(event => event.id === selectedId);
+
+                if (currentEvent) {
+                    const pTags = currentEvent.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]);
+                    
+                    // プロフィール情報を取得
+                    await fetchProfiles(pTags);
+                    
+                    // プロフィールをレンダリング
+                    renderProfiles(pTags);
+                    
+                    const dTag = currentEvent.tags.find(tag => tag[0] === 'd');
+                    const titleTag = currentEvent.tags.find(tag => tag[0] === 'title');
+                    eventInfo.textContent = `d-tag: ${dTag ? dTag[1] : 'なし'} / title-tag: ${titleTag ? titleTag[1] : 'なし'}`;
+                }
+            });
+
+            // プロフィール情報を取得する関数
+            async function fetchProfiles(pubkeys) {
+                // キャッシュにない公開鍵のみを抽出
+                const missingPubkeys = pubkeys.filter(pubkey => !profileCache[pubkey]);
+
+                if (missingPubkeys.length === 0) return;
+
+                return new Promise((resolve) => {
+                    const ws = new WebSocket(RELAY_URL);
+                    ws.onopen = () => {
+                        const filter = {
+                            kinds: [0],
+                            authors: missingPubkeys
+                        };
+                        ws.send(JSON.stringify(["REQ", "profile-req", filter]));
+                    };
+                    
+                    ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        if (data[0] === "EVENT") {
+                            const profileEvent = data[2];
+                            try {
+                                const profileData = JSON.parse(profileEvent.content);
+                                profileCache[profileEvent.pubkey] = profileData;
+                            } catch (e) {
+                                console.error("Failed to parse profile content", e);
+                            }
+                        } else if (data[0] === "EOSE") {
+                            ws.close();
+                            resolve();
+                        }
+                    };
+                });
+            }
 
             // プロフィールをレンダリングする関数
             function renderProfiles(pubkeys) {
@@ -160,9 +269,16 @@
                     const li = document.createElement('li');
                     li.className = 'profile-item';
                     li.dataset.pubkey = pubkey;
+
+                    const name = profileCache[pubkey] ? profileCache[pubkey].name : null;
+                    const displayName = name || `(名無し)`;
+
                     li.innerHTML = `
                         <span class="drag-handle">☰</span>
-                        <span class="profile-pubkey">${pubkey}</span>
+                        <div class="profile-info">
+                            <span class="profile-name">${displayName}</span>
+                            <span class="profile-pubkey">${pubkey.slice(0, 8)}...${pubkey.slice(-8)}</span>
+                        </div>
                     `;
                     profilesContainer.appendChild(li);
                 });
@@ -170,31 +286,27 @@
 
             // 変更を保存する処理
             saveButton.addEventListener('click', async () => {
-                if (!originalEvent) {
+                if (!currentEvent) {
                     alert('先にフォローリストを読み込んでください。');
                     return;
                 }
 
-                // 順番が変わった後のpubkeyリストを取得
                 const updatedPubkeys = Array.from(profilesContainer.children).map(li => li.dataset.pubkey);
-                const updatedContent = JSON.stringify(updatedPubkeys);
-
-                // NIP-04で新しいコンテンツを暗号化
-                const myPubkey = await window.nostr.getPublicKey();
-                const encryptedContent = await window.nostr.nip04.encrypt(myPubkey, updatedContent);
-
+                
+                const newTags = currentEvent.tags
+                    .filter(tag => tag[0] !== 'p')
+                    .concat(updatedPubkeys.map(pubkey => ["p", pubkey]));
+                
                 const newEvent = {
                     kind: 30000,
                     created_at: Math.floor(Date.now() / 1000),
-                    tags: originalEvent.tags, // 元のタグを保持
-                    content: encryptedContent,
+                    tags: newTags,
+                    content: ""
                 };
 
                 try {
-                    // NIP-07で署名して公開
                     const signedEvent = await window.nostr.signEvent(newEvent);
-                    const relay = 'wss://yabu.me'; // 書き込みたいリレーを指定
-                    const ws = new WebSocket(relay);
+                    const ws = new WebSocket(RELAY_URL);
                     ws.onopen = () => {
                         ws.send(JSON.stringify(["EVENT", signedEvent]));
                         console.log('イベントを公開しました:', signedEvent);
