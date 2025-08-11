@@ -241,7 +241,6 @@
             const eventJsonTextarea = document.getElementById('event-json-textarea');
             const relayStatusSection = document.getElementById('relay-status-section');
             const relayStatusList = document.getElementById('relay-status-list');
-            // ✅ 暗号化方式のラジオボタンを取得
             const encryptionRadios = document.querySelectorAll('input[name="encryption-type"]');
 
 
@@ -500,7 +499,7 @@
                 updateStatus('イベントJSONを生成中...', 'pending');
                 
                 try {
-                    // ✅ 選択された暗号化方式を取得
+                    // 選択された暗号化方式を取得
                     const selectedEncryption = document.querySelector('input[name="encryption-type"]:checked').value;
                     let encryptedContent = '';
                     const contentPayload = JSON.stringify({ p: privatePubkeys });
@@ -521,19 +520,21 @@
                         }
                     }
 
-                    let newTags = [];
-                    // 既存のd-tagとtitle-tagがあれば、新しいタグに含める
+                    // タグを生成
+                    const newTags = [];
+                    const pubkeysInTags = new Set(); // 重複チェック用のSet
+                    
+                    // 既存のd-tagとtitle-tagがあれば追加
                     if (originalDTag) {
                         newTags.push(['d', originalDTag]);
                     } else if (selectedEventId === 'new') {
-                        // 新規作成の場合はデフォルトのdタグを設定
                         newTags.push(['d', 'follow-list']);
                     }
                     if (originalTitleTag) {
                         newTags.push(['title', originalTitleTag]);
                     }
                     
-                    // その他のタグを保持
+                    // 元のイベントのその他のタグを保持（p, d, title以外）
                     if (selectedEventId !== 'new') {
                         const existingEvent = allEvents.find(e => e.id === selectedEventId);
                         if (existingEvent) {
@@ -542,9 +543,18 @@
                         }
                     }
 
-                    publicPubkeys.forEach(pk => {
-                        newTags.push(['p', pk]);
-                    });
+                    // 公開リストのpタグを追加し、重複をチェック
+                    for (const pk of publicPubkeys) {
+                        if (!pubkeysInTags.has(pk)) {
+                            newTags.push(['p', pk]);
+                            pubkeysInTags.add(pk);
+                        }
+                    }
+                    
+                    // 非公開リストが存在する場合、自身の公開鍵をpタグに**必ず追加**
+                    if (privatePubkeys.length > 0 && !pubkeysInTags.has(currentPubkey)) {
+                        newTags.push(['p', currentPubkey]);
+                    }
 
                     const newEvent = {
                         kind: 30000,
