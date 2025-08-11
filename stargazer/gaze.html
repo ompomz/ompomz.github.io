@@ -29,18 +29,11 @@
             margin-top: 10px;
             margin-right: 10px;
         }
-        #load-relays-button {
+        #load-relays-button, #load-lists-button {
             background-color: #3498db;
             color: white;
         }
-        #load-relays-button:hover {
-            background-color: #2980b9;
-        }
-        #load-lists-button {
-            background-color: #3498db;
-            color: white;
-        }
-        #load-lists-button:hover {
+        #load-relays-button:hover, #load-lists-button:hover {
             background-color: #2980b9;
         }
         #preview-button {
@@ -193,6 +186,85 @@
             let allEvents = [];
             let currentEvent = null;
 
+            // --- Base64 / ArrayBuffer 変換ヘルパー ---
+            function base64ToArrayBuffer(base64) {
+                const binaryString = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                return bytes.buffer;
+            }
+
+            function arrayBufferToBase64(buffer) {
+                let binary = '';
+                const bytes = new Uint8Array(buffer);
+                const len = bytes.byteLength;
+                for (let i = 0; i < len; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
+                return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            }
+
+            // --- 暗号化・復号化コアロジック (Web Crypto APIを使用) ---
+            async function getEncryptionKey(privateKey, pubkey) {
+                const pk = new Uint8Array(privateKey.match(/../g).map(h => parseInt(h, 16)));
+                const sharedSecret = await window.crypto.subtle.deriveBits(
+                    {
+                        name: "ECDH",
+                        public: await window.crypto.subtle.importKey(
+                            "jwk",
+                            { kty: "EC", crv: "P-256", x: arrayBufferToBase64(new Uint8Array(pubkey.match(/../g).map(h => parseInt(h, 16))).buffer), y: arrayBufferToBase64(new Uint8Array(pubkey.match(/../g).map(h => parseInt(h, 16))).buffer) },
+                            { name: "ECDH", namedCurve: "P-256" },
+                            false,
+                            []
+                        ),
+                    },
+                    await window.crypto.subtle.importKey(
+                        "jwk",
+                        { kty: "EC", crv: "P-256", d: arrayBufferToBase64(pk.buffer) },
+                        { name: "ECDH", namedCurve: "P-256" },
+                        false,
+                        ["deriveBits"]
+                    ),
+                    256
+                );
+
+                return window.crypto.subtle.importKey(
+                    'raw',
+                    sharedSecret.slice(0, 32),
+                    { name: 'AES-GCM' },
+                    false,
+                    ['encrypt', 'decrypt']
+                );
+            }
+
+            async function decryptContent(privateKey, encrypted, iv) {
+                const key = await getEncryptionKey(privateKey, currentEvent.pubkey);
+                const decrypted = await window.crypto.subtle.decrypt(
+                    { name: 'AES-GCM', iv: base64ToArrayBuffer(iv) },
+                    key,
+                    base64ToArrayBuffer(encrypted)
+                );
+                return new TextDecoder().decode(decrypted);
+            }
+
+            async function encryptContent(privateKey, pubkey, content) {
+                const key = await getEncryptionKey(privateKey, pubkey);
+                const iv = window.crypto.getRandomValues(new Uint8Array(16));
+                const encrypted = await window.crypto.subtle.encrypt(
+                    { name: 'AES-GCM', iv },
+                    key,
+                    new TextEncoder().encode(content)
+                );
+                return {
+                    encryptedData: arrayBufferToBase64(encrypted),
+                    iv: arrayBufferToBase64(iv)
+                };
+            }
+
+            // --- イベントリスナー ---
             async function getWritableRelays() {
                 return new Promise(async (resolve, reject) => {
                     if (!window.nostr || !window.nostr.nip04) {
@@ -263,17 +335,39 @@
                 
                 const pubkey = await window.nostr.getPublicKey();
                 let connections = 0;
+                let processedConnections = 0;
+
+                const checkAndDisplay = () => {
+                    processedConnections++;
+                    if (processedConnections === writableRelays.length) {
+                        if (allEvents.length === 0) {
+                            statusMessage.textContent = 'kind:30000のリストが見つかりませんでした。';
+                            alert('kind:30000のリストが見つかりませんでした。');
+                            return;
+                        }
+                        
+                        renderEventSelector(allEvents);
+                        eventSelectorContainer.classList.remove('hidden');
+                        pubkeyListContainer.classList.remove('hidden');
+                        statusMessage.textContent = '読み込みが完了しました。';
+                    }
+                };
                 
+                if (writableRelays.length === 0) {
+                    statusMessage.textContent = '書き込み可能なリレーがありません。';
+                    return;
+                }
+
                 writableRelays.forEach(relayUrl => {
                     const ws = new WebSocket(relayUrl);
-                    connections++;
                     
                     ws.onopen = () => {
+                        connections++;
                         const filter = {
                             kinds: [30000],
                             authors: [pubkey]
                         };
-                        ws.send(JSON.stringify(["REQ", "my-follow-set-req", filter]));
+                        ws.send(JSON.stringify(["REQ", `my-follow-set-req-${relayUrl}`, filter]));
                     };
 
                     ws.onmessage = (event) => {
@@ -285,20 +379,13 @@
                             }
                         } else if (data[0] === "EOSE") {
                             ws.close();
-                            connections--;
-                            if (connections === 0) {
-                                if (allEvents.length === 0) {
-                                    statusMessage.textContent = 'kind:30000のリストが見つかりませんでした。';
-                                    alert('kind:30000のリストが見つかりませんでした。');
-                                    return;
-                                }
-                                
-                                renderEventSelector(allEvents);
-                                eventSelectorContainer.classList.remove('hidden');
-                                pubkeyListContainer.classList.remove('hidden');
-                                statusMessage.textContent = '読み込みが完了しました。';
-                            }
+                            checkAndDisplay();
                         }
+                    };
+
+                    ws.onerror = () => {
+                        console.error(`リレー${relayUrl}への接続に失敗しました。`);
+                        checkAndDisplay();
                     };
                 });
             });
@@ -331,7 +418,16 @@
                         let privatePubkeys = [];
                         let publicPubkeys = currentEvent.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]);
 
-                        if (currentEvent.content && currentEvent.content.startsWith('B') || currentEvent.content.includes('?iv=')) {
+                        if (currentEvent.content && currentEvent.content.includes('?iv=')) {
+                            const [encrypted, ivParam] = currentEvent.content.split('?iv=');
+                            if (encrypted && ivParam) {
+                                // Web Crypto APIで復号
+                                const decryptedContent = await decryptContent(await window.nostr.getPrivateKey(), encrypted, ivParam);
+                                const decryptedEvent = JSON.parse(decryptedContent);
+                                privatePubkeys = decryptedEvent.p || [];
+                            }
+                        } else {
+                            // NIP-04形式の復号を試みる (互換性のため)
                             const decryptedContent = await window.nostr.nip04.decrypt(currentEvent.pubkey, currentEvent.content);
                             const decryptedEvent = JSON.parse(decryptedContent);
                             privatePubkeys = decryptedEvent.p || [];
@@ -339,13 +435,15 @@
 
                         pubkeyListTextareaPublic.value = publicPubkeys.join('\n');
                         pubkeyListTextareaPrivate.value = privatePubkeys.join('\n');
+                        statusMessage.textContent = 'リストの読み込みと復号に成功しました。';
 
                     } catch (e) {
-                        alert('リストの復号に失敗しました。公開リストとして読み込みます。');
+                        alert('リストの復号に失敗しました。公開リストとして読み込みます。エラー: ' + e.message);
                         const pTags = currentEvent.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]);
                         pubkeyListTextareaPublic.value = pTags.join('\n');
                         pubkeyListTextareaPrivate.value = '';
                         console.error('Decryption failed:', e);
+                        statusMessage.textContent = '復号に失敗しました。公開鍵のみ表示しています。';
                     }
                     
                     const dTag = currentEvent.tags.find(tag => tag[0] === 'd');
@@ -360,6 +458,9 @@
                     return;
                 }
 
+                const privateKey = await window.nostr.getPrivateKey();
+                const pubkey = await window.nostr.getPublicKey();
+
                 const publicPubkeys = pubkeyListTextareaPublic.value.split(/,|\t| |\n/).map(s => s.trim()).filter(s => s.length > 0);
                 const privatePubkeys = pubkeyListTextareaPrivate.value.split(/,|\t| |\n/).map(s => s.trim()).filter(s => s.length > 0);
 
@@ -368,8 +469,8 @@
                     return;
                 }
                 
-                // NIP-04準拠の暗号化
-                const encryptedContent = await window.nostr.nip04.encrypt(currentEvent.pubkey, JSON.stringify({ p: privatePubkeys }));
+                // 新しい暗号化ロジックを使用
+                const encryptedResult = await encryptContent(privateKey, pubkey, JSON.stringify({ p: privatePubkeys }));
 
                 const newTags = currentEvent.tags.filter(tag => tag[0] !== 'p' && tag[0] !== 'e');
                 publicPubkeys.forEach(pubkey => {
@@ -380,7 +481,7 @@
                     kind: 30000,
                     created_at: Math.floor(Date.now() / 1000),
                     tags: newTags,
-                    content: encryptedContent
+                    content: `${encryptedResult.encryptedData}?iv=${encryptedResult.iv}`
                 };
 
                 eventJsonTextarea.value = JSON.stringify(newEvent, null, 2);
