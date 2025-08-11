@@ -331,7 +331,7 @@
                         let privatePubkeys = [];
                         let publicPubkeys = currentEvent.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]);
 
-                        if (currentEvent.content.startsWith('B')) {
+                        if (currentEvent.content && currentEvent.content.startsWith('B') || currentEvent.content.includes('?iv=')) {
                             const decryptedContent = await window.nostr.nip04.decrypt(currentEvent.pubkey, currentEvent.content);
                             const decryptedEvent = JSON.parse(decryptedContent);
                             privatePubkeys = decryptedEvent.p || [];
@@ -368,6 +368,7 @@
                     return;
                 }
                 
+                // NIP-04準拠の暗号化
                 const encryptedContent = await window.nostr.nip04.encrypt(currentEvent.pubkey, JSON.stringify({ p: privatePubkeys }));
 
                 const newTags = currentEvent.tags.filter(tag => tag[0] !== 'p' && tag[0] !== 'e');
