@@ -268,7 +268,13 @@
                     pubkeyListTextarea.value = '読み込み中...';
 
                     try {
-                        const decryptedContent = await window.nostr.nip04.decrypt(currentEvent.pubkey, currentEvent.content);
+                        let contentToDecrypt = currentEvent.content;
+                        const ivTag = currentEvent.tags.find(tag => tag[0] === 'iv');
+                        if (ivTag) {
+                            contentToDecrypt += `?iv=${ivTag[1]}`;
+                        }
+                        
+                        const decryptedContent = await window.nostr.nip04.decrypt(currentEvent.pubkey, contentToDecrypt);
                         const decryptedEvent = JSON.parse(decryptedContent);
                         const pubkeys = decryptedEvent.p || [];
                         pubkeyListTextarea.value = pubkeys.join('\n');
@@ -304,22 +310,27 @@
                     return;
                 }
                 
-                let encryptedContent;
+                // NIP-04の仕様に準拠するため、contentとivを分離
+                let encryptedContentAndIv;
                 try {
-                    encryptedContent = await window.nostr.nip04.encrypt(currentEvent.pubkey, JSON.stringify({ p: newPubkeys }));
+                    encryptedContentAndIv = await window.nostr.nip04.encrypt(currentEvent.pubkey, JSON.stringify({ p: newPubkeys }));
                 } catch (e) {
                     alert('暗号化に失敗しました。');
                     console.error('Encryption failed:', e);
                     return;
                 }
 
-                const newTags = currentEvent.tags.filter(tag => tag[0] !== 'p' && tag[0] !== 'e' && tag[0] !== 'd');
+                const [encryptedContent, iv] = encryptedContentAndIv.split('?iv=');
+
+                const newTags = currentEvent.tags.filter(tag => tag[0] !== 'p' && tag[0] !== 'e' && tag[0] !== 'd' && tag[0] !== 'iv');
                 
                 const dTag = currentEvent.tags.find(tag => tag[0] === 'd');
                 if (dTag) {
                     newTags.push(dTag);
                 }
                 
+                newTags.push(['iv', iv]);
+
                 const newEvent = {
                     kind: 30000,
                     created_at: Math.floor(Date.now() / 1000),
