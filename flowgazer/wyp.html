@@ -99,6 +99,26 @@
         #event-json-textarea {
             min-height: 300px;
         }
+        
+        .encryption-options {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .encryption-options label {
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            color: #555;
+            font-size: 1rem;
+        }
+
+        .encryption-options input[type="radio"] {
+            margin-right: 8px;
+        }
 
         /* ユーティリティクラス */
         .hidden {
@@ -180,6 +200,12 @@
 
             <h3 class="mt-20">非公開リスト</h3>
             <p class="info-text">これらの鍵は**content（暗号化）**にのみ含まれ、非公開で保存されます。<br>カンマ、スペース、タブ、改行で区切って入力できます。</p>
+            
+            <div class="encryption-options">
+                <label><input type="radio" name="encryption-type" value="nip44" checked> NIP-44 (推奨)</label>
+                <label><input type="radio" name="encryption-type" value="nip04"> NIP-04 (互換性)</label>
+            </div>
+            
             <textarea id="private-pubkeys-textarea" placeholder="非公開リストの公開鍵を1行に1つ入力してください"></textarea>
             
             <button id="preview-button">JSONイベントをプレビュー</button>
@@ -215,6 +241,9 @@
             const eventJsonTextarea = document.getElementById('event-json-textarea');
             const relayStatusSection = document.getElementById('relay-status-section');
             const relayStatusList = document.getElementById('relay-status-list');
+            // ✅ 暗号化方式のラジオボタンを取得
+            const encryptionRadios = document.querySelectorAll('input[name="encryption-type"]');
+
 
             // グローバル変数
             let writableRelays = [];
@@ -428,16 +457,16 @@
                         let decryptedContent = null;
                         const isNip44 = eventToEdit.content.startsWith('c');
 
-                        if (isNip44) {
+                        if (isNip44 && window.nostr.nip44) {
                             // NIP-44での復号を試行
                             decryptedContent = await window.nostr.nip44.decrypt(eventToEdit.pubkey, eventToEdit.content);
+                            document.querySelector('input[name="encryption-type"][value="nip44"]').checked = true; // UIをNIP-44に設定
+                        } else if (window.nostr.nip04) {
+                            // NIP-04での復号を試行
+                            decryptedContent = await window.nostr.nip04.decrypt(eventToEdit.pubkey, eventToEdit.content);
+                            document.querySelector('input[name="encryption-type"][value="nip04"]').checked = true; // UIをNIP-04に設定
                         } else {
-                            // NIP-04での復号を試行（NIP-04互換性のために追加）
-                            if (window.nostr.nip04 && window.nostr.nip04.decrypt) {
-                                decryptedContent = await window.nostr.nip04.decrypt(eventToEdit.pubkey, eventToEdit.content);
-                            } else {
-                                throw new Error('NIP-04復号化がサポートされていません。');
-                            }
+                            throw new Error('NIP-04/NIP-44復号化がサポートされていません。');
                         }
 
                         const decryptedEvent = JSON.parse(decryptedContent);
@@ -471,9 +500,27 @@
                 updateStatus('イベントJSONを生成中...', 'pending');
                 
                 try {
-                    // NIP-44のencryptで暗号化
-                    const encryptedContent = await window.nostr.nip44.encrypt(currentPubkey, JSON.stringify({ p: privatePubkeys }));
-                    
+                    // ✅ 選択された暗号化方式を取得
+                    const selectedEncryption = document.querySelector('input[name="encryption-type"]:checked').value;
+                    let encryptedContent = '';
+                    const contentPayload = JSON.stringify({ p: privatePubkeys });
+
+                    if (privatePubkeys.length > 0) {
+                        if (selectedEncryption === 'nip44') {
+                            if (!window.nostr.nip44 || !window.nostr.nip44.encrypt) {
+                                throw new Error('NIP-44の暗号化がサポートされていません。');
+                            }
+                            // NIP-44で暗号化
+                            encryptedContent = await window.nostr.nip44.encrypt(currentPubkey, contentPayload);
+                        } else if (selectedEncryption === 'nip04') {
+                            if (!window.nostr.nip04 || !window.nostr.nip04.encrypt) {
+                                throw new Error('NIP-04の暗号化がサポートされていません。');
+                            }
+                            // NIP-04で暗号化
+                            encryptedContent = await window.nostr.nip04.encrypt(currentPubkey, contentPayload);
+                        }
+                    }
+
                     let newTags = [];
                     // 既存のd-tagとtitle-tagがあれば、新しいタグに含める
                     if (originalDTag) {
