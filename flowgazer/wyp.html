@@ -1,648 +1,512 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>want you peek</title>
-    <style>
-        /* リセットと基本スタイル */
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-            background-color: #f7f7f7;
-            color: #333;
-            line-height: 1.6;
-            padding: 1rem;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: auto;
-            background-color: #fff;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-
-        h1 {
-            font-size: 2rem;
-            color: #2c3e50;
-            margin-bottom: 0.5rem;
-        }
-
-        h3 {
-            font-size: 1.5rem;
-            color: #555;
-            margin-top: 2rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .info-text {
-            font-size: 0.9rem;
-            color: #888;
-            margin-bottom: 0.5rem;
-        }
-
-        /* ボタンと入力フォーム */
-        button {
-            padding: 12px 20px;
-            font-size: 16px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.2s, transform 0.1s;
-            color: white;
-            font-weight: bold;
-            margin-right: 10px;
-            margin-top: 10px;
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-        }
-
-        #load-relays-button, #load-lists-button {
-            background-color: #007bff; /* 青色 */
-        }
-        #load-relays-button:hover, #load-lists-button:hover {
-            background-color: #0056b3;
-        }
-
-        #preview-button {
-            background-color: #28a745; /* 緑色 */
-        }
-        #preview-button:hover {
-            background-color: #218838;
-        }
-
-        #save-button {
-            background-color: #ff69b4; /* ホットピンク */
-        }
-        #save-button:hover {
-            background-color: #e65a9e;
-        }
-
-        textarea, select {
-            width: 100%;
-            padding: 10px;
-            font-size: 14px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            box-sizing: border-box;
-            margin-bottom: 10px;
-            font-family: monospace;
-            resize: vertical;
-        }
-
-        #public-pubkeys-textarea, #private-pubkeys-textarea {
-            min-height: 100px;
-        }
-        #event-json-textarea {
-            min-height: 300px;
-        }
-        
-        .encryption-options {
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .encryption-options label {
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            color: #555;
-            font-size: 1rem;
-        }
-
-        .encryption-options input[type="radio"] {
-            margin-right: 8px;
-        }
-
-        /* ユーティリティクラス */
-        .hidden {
-            display: none;
-        }
-
-        .mt-20 {
-            margin-top: 20px;
-        }
-
-        /* ステータスメッセージ */
-        #status-message {
-            font-weight: bold;
-            color: #333;
-            margin-top: 10px;
-        }
-        .status-success {
-            color: #28a745;
-        }
-        .status-error {
-            color: #dc3545;
-        }
-        .status-pending {
-            color: #ffc107;
-        }
-
-        /* リレー送信状況 */
-        #relay-status-section {
-            background-color: #f0f0f0;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 2rem;
-        }
-        .relay-status {
-            margin-bottom: 8px;
-            font-family: monospace;
-            padding: 5px;
-            border-radius: 4px;
-        }
-        .relay-status.success {
-            color: #28a745;
-            background-color: #e6f7e9;
-        }
-        .relay-status.error {
-            color: #dc3545;
-            background-color: #f8d7da;
-        }
-        .relay-status.pending {
-            color: #856404;
-            background-color: #fff3cd;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>want you peek</title>
+  <style>
+    /* （元のCSSを概ね維持） */
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";background:#f7f7f7;color:#333;line-height:1.6;padding:1rem}
+    .container{max-width:800px;margin:auto;background:#fff;padding:2rem;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+    h1{font-size:2rem;color:#2c3e50;margin-bottom:.5rem}
+    h3{font-size:1.5rem;color:#555;margin-top:2rem;margin-bottom:.5rem}
+    .info-text{font-size:.9rem;color:#888;margin-bottom:.5rem}
+    button{padding:12px 20px;font-size:16px;border:none;border-radius:8px;cursor:pointer;transition:background-color .2s,transform .1s;color:#fff;font-weight:700;margin-right:10px;margin-top:10px}
+    button:hover{transform:translateY(-2px)}
+    #load-relays-button,#load-lists-button{background:#007bff}
+    #load-relays-button:hover,#load-lists-button:hover{background:#0056b3}
+    #preview-button{background:#28a745}
+    #preview-button:hover{background:#218838}
+    #save-button{background:#ff69b4}
+    #save-button:hover{background:#e65a9e}
+    textarea,select{width:100%;padding:10px;font-size:14px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box;margin-bottom:10px;font-family:monospace;resize:vertical}
+    #public-pubkeys-textarea,#private-pubkeys-textarea{min-height:100px}
+    #event-json-textarea{min-height:300px}
+    .encryption-options{margin-bottom:15px;display:flex;align-items:center;gap:20px}
+    .encryption-options label{font-weight:700;display:flex;align-items:center;cursor:pointer;color:#555;font-size:1rem}
+    .encryption-options input[type="radio"]{margin-right:8px}
+    .hidden{display:none}
+    .mt-20{margin-top:20px}
+    #status-message{font-weight:700;color:#333;margin-top:10px}
+    .status-success{color:#28a745}
+    .status-error{color:#dc3545}
+    .status-pending{color:#ffc107}
+    #relay-status-section{background:#f0f0f0;padding:15px;border-radius:8px;margin-top:2rem}
+    .relay-status{margin-bottom:8px;font-family:monospace;padding:5px;border-radius:4px}
+    .relay-status.success{color:#28a745;background:#e6f7e9}
+    .relay-status.error{color:#dc3545;background:#f8d7da}
+    .relay-status.pending{color:#856404;background:#fff3cd}
+  </style>
 </head>
 <body>
+  <div class="container">
+    <h1>want you peek（フォローリストエディター）</h1>
+    <p>kind:30000イベントの公開部分（pタグ）と非公開部分（content）を同時に編集・保存します。</p>
 
-    <div class="container">
-        <h1>want you peek（フォローリストエディター）</h1>
-        <p>kind:30000イベントの公開部分（pタグ）と非公開部分（content）を同時に編集・保存します。</p>
+    <section id="status-section">
+      <p id="status-message">ツールを利用するには、NIP-07対応の拡張機能が必要です。</p>
+    </section>
 
-        <section id="status-section">
-            <p id="status-message">ツールを利用するには、NIP-07対応の拡張機能が必要です。</p>
-        </section>
+    <section id="load-section">
+      <button id="load-relays-button">リレーリストを読み込む</button>
+      <button id="load-lists-button" class="hidden">フォローリストを読み込む</button>
+    </section>
 
-        <section id="load-section">
-            <button id="load-relays-button">リレーリストを読み込む</button>
-            <button id="load-lists-button" class="hidden">フォローリストを読み込む</button>
-        </section>
+    <section id="editor-section" class="hidden">
+      <h3>編集するリストを選択</h3>
+      <div class="input-group">
+        <select id="event-select"></select>
+        <span id="event-info" class="info-text"></span>
+      </div>
 
-        <section id="editor-section" class="hidden">
-            <h3>編集するリストを選択</h3>
-            <div class="input-group">
-                <select id="event-select"></select>
-                <span id="event-info" class="info-text"></span>
-            </div>
+      <h3 class="mt-20">公開リスト</h3>
+      <p class="info-text">これらの鍵は <strong>pタグ</strong> に含まれ、公開されます。カンマ、スペース、タブ、改行で区切って入力できます。</p>
+      <textarea id="public-pubkeys-textarea" placeholder="公開リストの公開鍵を1行に1つ入力してください"></textarea>
 
-            <h3 class="mt-20">公開リスト</h3>
-            <p class="info-text">これらの鍵は**pタグ**に含まれ、公開されます。<br>カンマ、スペース、タブ、改行で区切って入力できます。</p>
-            <textarea id="public-pubkeys-textarea" placeholder="公開リストの公開鍵を1行に1つ入力してください"></textarea>
+      <h3 class="mt-20">非公開リスト</h3>
+      <p class="info-text">これらの鍵は <strong>content（暗号化）</strong> にのみ含まれ、非公開で保存されます。</p>
 
-            <h3 class="mt-20">非公開リスト</h3>
-            <p class="info-text">これらの鍵は**content（暗号化）**にのみ含まれ、非公開で保存されます。<br>カンマ、スペース、タブ、改行で区切って入力できます。</p>
-            
-            <div class="encryption-options">
-                <label><input type="radio" name="encryption-type" value="nip44" checked> NIP-44 (推奨)</label>
-                <label><input type="radio" name="encryption-type" value="nip04"> NIP-04 (互換性)</label>
-            </div>
-            
-            <textarea id="private-pubkeys-textarea" placeholder="非公開リストの公開鍵を1行に1つ入力してください"></textarea>
-            
-            <button id="preview-button">JSONイベントをプレビュー</button>
-        </section>
+      <div class="encryption-options">
+        <label><input type="radio" name="encryption-type" value="nip44" checked> NIP-44 (推奨)</label>
+        <label><input type="radio" name="encryption-type" value="nip04"> NIP-04 (互換性)</label>
+      </div>
 
-        <section id="preview-section" class="hidden">
-            <h3>生成されたイベントJSON（編集可能）</h3>
-            <textarea id="event-json-textarea"></textarea>
-            <button id="save-button">署名してリレーに送信</button>
-        </section>
+      <textarea id="private-pubkeys-textarea" placeholder="非公開リストの公開鍵を1行に1つ入力してください"></textarea>
 
-        <section id="relay-status-section" class="hidden">
-            <h3>リレー送信状況</h3>
-            <div id="relay-status-list"></div>
-        </section>
-    </div>
+      <button id="preview-button">JSONイベントをプレビュー</button>
+    </section>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // UI要素の取得
-            const loadRelaysButton = document.getElementById('load-relays-button');
-            const loadListsButton = document.getElementById('load-lists-button');
-            const previewButton = document.getElementById('preview-button');
-            const saveButton = document.getElementById('save-button');
-            const statusMessage = document.getElementById('status-message');
-            const loadSection = document.getElementById('load-section');
-            const editorSection = document.getElementById('editor-section');
-            const eventSelect = document.getElementById('event-select');
-            const eventInfo = document.getElementById('event-info');
-            const publicPubkeysTextarea = document.getElementById('public-pubkeys-textarea');
-            const privatePubkeysTextarea = document.getElementById('private-pubkeys-textarea');
-            const previewSection = document.getElementById('preview-section');
-            const eventJsonTextarea = document.getElementById('event-json-textarea');
-            const relayStatusSection = document.getElementById('relay-status-section');
-            const relayStatusList = document.getElementById('relay-status-list');
-            const encryptionRadios = document.querySelectorAll('input[name="encryption-type"]');
+    <section id="preview-section" class="hidden">
+      <h3>生成されたイベントJSON（編集可能）</h3>
+      <textarea id="event-json-textarea"></textarea>
+      <button id="save-button">署名してリレーに送信</button>
+    </section>
 
+    <section id="relay-status-section" class="hidden">
+      <h3>リレー送信状況</h3>
+      <div id="relay-status-list"></div>
+    </section>
+  </div>
 
-            // グローバル変数
-            let writableRelays = [];
-            let allEvents = [];
-            let currentPubkey = null;
-            let selectedEventId = null;
-            let originalDTag = null; // 元のdタグを保持
-            let originalTitleTag = null; // 元のtitleタグを保持
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // 要素
+      const loadRelaysButton = document.getElementById('load-relays-button');
+      const loadListsButton = document.getElementById('load-lists-button');
+      const previewButton = document.getElementById('preview-button');
+      const saveButton = document.getElementById('save-button');
+      const statusMessage = document.getElementById('status-message');
+      const editorSection = document.getElementById('editor-section');
+      const eventSelect = document.getElementById('event-select');
+      const eventInfo = document.getElementById('event-info');
+      const publicPubkeysTextarea = document.getElementById('public-pubkeys-textarea');
+      const privatePubkeysTextarea = document.getElementById('private-pubkeys-textarea');
+      const previewSection = document.getElementById('preview-section');
+      const eventJsonTextarea = document.getElementById('event-json-textarea');
+      const relayStatusSection = document.getElementById('relay-status-section');
+      const relayStatusList = document.getElementById('relay-status-list');
 
-            const PUBLIC_RELAY = 'wss://relay.nostr.band';
+      // グローバル
+      let writableRelays = [];
+      let allEvents = [];
+      let currentPubkey = null;
+      let selectedEventId = null;
+      let originalDTag = null;
+      let originalTitleTag = null;
 
-            // UIの状態を更新するヘルパー関数
-            function updateStatus(message, type = 'default') {
-                statusMessage.textContent = message;
-                statusMessage.className = '';
-                if (type === 'success') {
-                    statusMessage.classList.add('status-success');
-                } else if (type === 'error') {
-                    statusMessage.classList.add('status-error');
-                } else if (type === 'pending') {
-                    statusMessage.classList.add('status-pending');
-                }
+      const PUBLIC_RELAY = 'wss://relay.nostr.band';
+
+      function updateStatus(msg, type = '') {
+        statusMessage.textContent = msg;
+        statusMessage.className = '';
+        if (type === 'success') statusMessage.classList.add('status-success');
+        else if (type === 'error') statusMessage.classList.add('status-error');
+        else if (type === 'pending') statusMessage.classList.add('status-pending');
+      }
+
+      // Nostr relay からイベントを取得（シンプルで堅牢に）
+      function fetchNostrEventsFromRelay(relayUrl, filter) {
+        return new Promise((resolve, reject) => {
+          let ws;
+          try {
+            ws = new WebSocket(relayUrl);
+          } catch (e) {
+            return reject(new Error(`WebSocket 接続作成失敗: ${relayUrl}`));
+          }
+
+          const subId = `fetch-req-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+          const timeoutId = setTimeout(() => {
+            try { ws.close(); } catch(e){}
+            reject(new Error(`リレー ${relayUrl} でのイベント取得がタイムアウトしました。`));
+          }, 8000);
+
+          const events = new Map();
+
+          ws.onopen = () => {
+            try {
+              // REQ フォーマット: ["REQ", subId, filterObject]
+              ws.send(JSON.stringify(["REQ", subId, filter]));
+            } catch (e) {
+              clearTimeout(timeoutId);
+              ws.close();
+              reject(e);
             }
+          };
 
-            // WebSocket経由でNostrイベントを取得する汎用関数
-            function fetchNostrEventsFromRelay(relayUrl, filter) {
-                return new Promise((resolve, reject) => {
-                    const ws = new WebSocket(relayUrl);
-                    const timeoutId = setTimeout(() => {
-                        ws.close();
-                        reject(new Error(`リレー ${relayUrl} でのイベント取得がタイムアウトしました。`));
-                    }, 8000);
+          ws.onmessage = (ev) => {
+            try {
+              const data = JSON.parse(ev.data);
+              if (!Array.isArray(data) || data.length === 0) return;
 
-                    let events = [];
-                    ws.onopen = () => {
-                        ws.send(JSON.stringify(["REQ", `fetch-req-${Date.now()}`, filter]));
-                    };
-
-                    ws.onmessage = (event) => {
-                        const data = JSON.parse(event.data);
-                        if (data[0] === "EVENT") {
-                            events.push(data[2]);
-                        } else if (data[0] === "EOSE") {
-                            clearTimeout(timeoutId);
-                            ws.close();
-                            resolve(events);
-                        }
-                    };
-
-                    ws.onerror = () => {
-                        clearTimeout(timeoutId);
-                        ws.close();
-                        reject(new Error(`リレー ${relayUrl} への接続に失敗しました。`));
-                    };
-                });
+              const t = data[0];
+              if (t === "EVENT" && data[2]) {
+                const event = data[2];
+                if (event && event.id) events.set(event.id, event);
+              } else if (t === "EOSE") {
+                clearTimeout(timeoutId);
+                try { ws.close(); } catch(e){}
+                resolve(Array.from(events.values()));
+              } else if (t === "NOTICE") {
+                // NOTICE は無視（ログは残す）
+                console.debug(`NOTICE from ${relayUrl}:`, data[1]);
+              }
+            } catch (err) {
+              console.warn('メッセージ解析に失敗:', err);
             }
+          };
 
-            // リレーリストの読み込み
-            async function loadRelayList() {
-                if (!window.nostr || !window.nostr.getPublicKey) {
-                    updateStatus('エラー: NIP-07対応の拡張機能が見つかりません。', 'error');
-                    alert('NIP-07対応の拡張機能をインストールしてください (例: Alby, nos2x)。');
-                    return;
-                }
+          ws.onerror = (e) => {
+            clearTimeout(timeoutId);
+            try { ws.close(); } catch(e){}
+            reject(new Error(`リレー ${relayUrl} への接続に失敗しました。`));
+          };
 
-                updateStatus('リレーリストを読み込み中...', 'pending');
-                try {
-                    currentPubkey = await window.nostr.getPublicKey();
-                    
-                    // wss://relay.nostr.band から kind:10002 イベントを取得
-                    const relayEvents = await fetchNostrEventsFromRelay(PUBLIC_RELAY, {
-                        kinds: [10002],
-                        authors: [currentPubkey]
-                    });
-                    
-                    let relays = {};
-                    if (relayEvents.length > 0) {
-                        const latestEvent = relayEvents.sort((a, b) => b.created_at - a.created_at)[0];
-                        const relayTags = latestEvent.tags.filter(tag => tag[0] === 'r');
-                        relays = relayTags.reduce((acc, tag) => {
-                            const [_, url, permission] = tag;
-                            if (url) {
-                                acc[url] = { read: permission !== 'write', write: permission !== 'read' };
-                            }
-                            return acc;
-                        }, {});
-                    }
-
-                    if (Object.keys(relays).length === 0) {
-                        throw new Error(`リレー ${PUBLIC_RELAY} から kind:10002 イベントが見つかりませんでした。`);
-                    }
-
-                    writableRelays = Object.entries(relays)
-                        .filter(([url, { write }]) => write)
-                        .map(([url]) => url);
-                    
-                    if (writableRelays.length === 0) {
-                        throw new Error('書き込み可能なリレーがkind:10002イベントに定義されていませんでした。');
-                    }
-
-                    updateStatus(`書き込み可能なリレーを${writableRelays.length}件読み込みました。`, 'success');
-                    loadRelaysButton.classList.add('hidden');
-                    loadListsButton.classList.remove('hidden');
-
-                } catch (error) {
-                    updateStatus(`エラー: ${error.message}`, 'error');
-                    console.error('リレーリストの読み込みに失敗しました:', error);
-                }
-            }
-
-            // kind:30000リストの読み込み
-            async function loadLists() {
-                if (!currentPubkey || writableRelays.length === 0) {
-                    updateStatus('まずリレーリストを読み込んでください。', 'error');
-                    return;
-                }
-                
-                updateStatus('フォローリストを読み込み中...', 'pending');
-                allEvents = [];
-                const uniqueEvents = new Map();
-
-                // WebSocket接続とイベント取得
-                const fetchListsFromRelay = async (relayUrl) => {
-                    try {
-                        const events = await fetchNostrEventsFromRelay(relayUrl, {
-                            kinds: [30000],
-                            authors: [currentPubkey]
-                        });
-                        events.forEach(event => uniqueEvents.set(event.id, event));
-                    } catch (error) {
-                        console.error(`リレー ${relayUrl} からのリスト取得に失敗:`, error.message);
-                    }
-                };
-
-                // 全リレーからイベントを並行して取得
-                await Promise.allSettled(writableRelays.map(fetchListsFromRelay));
-                allEvents = Array.from(uniqueEvents.values()).sort((a, b) => b.created_at - a.created_at);
-
-                // UIの更新
-                renderEventSelector();
-                if (allEvents.length > 0) {
-                    updateStatus('フォローリストの読み込みが完了しました。', 'success');
-                    editorSection.classList.remove('hidden');
-                } else {
-                    updateStatus('既存のリストが見つかりませんでした。新しいリストを作成できます。', 'info');
-                    editorSection.classList.remove('hidden');
-                }
-            }
-
-            // イベント選択ドロップダウンのレンダリング
-            function renderEventSelector() {
-                eventSelect.innerHTML = '';
-                const newOption = document.createElement('option');
-                newOption.textContent = '新しいリストを作成';
-                newOption.value = 'new';
-                eventSelect.appendChild(newOption);
-
-                allEvents.forEach(event => {
-                    const option = document.createElement('option');
-                    const dTag = event.tags.find(tag => tag[0] === 'd');
-                    const titleTag = event.tags.find(tag => tag[0] === 'title');
-                    const eventTitle = titleTag ? titleTag[1] : (dTag ? dTag[1] : `ID: ${event.id.slice(0, 8)}...`);
-                    
-                    option.textContent = eventTitle;
-                    option.value = event.id;
-                    eventSelect.appendChild(option);
-                });
-
-                eventSelect.dispatchEvent(new Event('change'));
-            }
-
-            // 選択されたイベントのデータを表示
-            async function handleEventSelection() {
-                const selectedId = eventSelect.value;
-                selectedEventId = selectedId;
-                publicPubkeysTextarea.value = '';
-                privatePubkeysTextarea.value = '';
-                eventInfo.textContent = '';
-                previewSection.classList.add('hidden');
-                
-                originalDTag = null;
-                originalTitleTag = null;
-
-                if (selectedId === 'new') {
-                    updateStatus('新しいリストを作成する準備ができました。', 'info');
-                    eventInfo.textContent = '新しいリストを作成します。d-tagは自動で追加されます。';
-                    return;
-                }
-
-                const eventToEdit = allEvents.find(e => e.id === selectedId);
-                if (!eventToEdit) {
-                    updateStatus('選択されたイベントが見つかりません。', 'error');
-                    return;
-                }
-                
-                const dTag = eventToEdit.tags.find(tag => tag[0] === 'd');
-                const titleTag = eventToEdit.tags.find(tag => tag[0] === 'title');
-                
-                originalDTag = dTag ? dTag[1] : null;
-                originalTitleTag = titleTag ? titleTag[1] : null;
-
-                eventInfo.textContent = `d-tag: ${originalDTag || 'なし'} / title-tag: ${originalTitleTag || 'なし'}`;
-
-                const publicPubkeys = eventToEdit.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]);
-                publicPubkeysTextarea.value = publicPubkeys.join('\n');
-
-                if (eventToEdit.content) {
-                    try {
-                        updateStatus('非公開リストを復号化中...', 'pending');
-
-                        let decryptedContent = null;
-                        const isNip44 = eventToEdit.content.startsWith('c');
-
-                        if (isNip44 && window.nostr.nip44) {
-                            // NIP-44での復号を試行
-                            decryptedContent = await window.nostr.nip44.decrypt(eventToEdit.pubkey, eventToEdit.content);
-                            document.querySelector('input[name="encryption-type"][value="nip44"]').checked = true; // UIをNIP-44に設定
-                        } else if (window.nostr.nip04) {
-                            // NIP-04での復号を試行
-                            decryptedContent = await window.nostr.nip04.decrypt(eventToEdit.pubkey, eventToEdit.content);
-                            document.querySelector('input[name="encryption-type"][value="nip04"]').checked = true; // UIをNIP-04に設定
-                        } else {
-                            throw new Error('NIP-04/NIP-44復号化がサポートされていません。');
-                        }
-
-                        const decryptedEvent = JSON.parse(decryptedContent);
-                        const privatePubkeys = decryptedEvent.p || [];
-                        privatePubkeysTextarea.value = privatePubkeys.join('\n');
-                        updateStatus('リストの読み込みと復号に成功しました。', 'success');
-                    } catch (error) {
-                        console.error('リストの復号に失敗しました:', error);
-                        privatePubkeysTextarea.value = '復号に失敗しました。';
-                        updateStatus('リストの復号に失敗しました。公開リストのみ表示しています。', 'error');
-                    }
-                }
-            }
-
-            // イベントJSONのプレビュー生成
-            async function previewEvent() {
-                if (!currentPubkey) {
-                    alert('まずリレーリストを読み込んでください。');
-                    return;
-                }
-
-                // 入力欄の値を、カンマ、スペース、タブ、改行で分割して配列に
-                const publicPubkeys = publicPubkeysTextarea.value.split(/,|\t| |\n/).map(s => s.trim()).filter(s => s.length > 0);
-                const privatePubkeys = privatePubkeysTextarea.value.split(/,|\t| |\n/).map(s => s.trim()).filter(s => s.length > 0);
-
-                if (publicPubkeys.length === 0 && privatePubkeys.length === 0) {
-                    alert('公開鍵が入力されていません。');
-                    return;
-                }
-
-                updateStatus('イベントJSONを生成中...', 'pending');
-                
-                try {
-                    // 選択された暗号化方式を取得
-                    const selectedEncryption = document.querySelector('input[name="encryption-type"]:checked').value;
-                    let encryptedContent = '';
-                    const contentPayload = JSON.stringify({ p: privatePubkeys });
-
-                    if (privatePubkeys.length > 0) {
-                        if (selectedEncryption === 'nip44') {
-                            if (!window.nostr.nip44 || !window.nostr.nip44.encrypt) {
-                                throw new Error('NIP-44の暗号化がサポートされていません。');
-                            }
-                            // NIP-44で暗号化
-                            encryptedContent = await window.nostr.nip44.encrypt(currentPubkey, contentPayload);
-                        } else if (selectedEncryption === 'nip04') {
-                            if (!window.nostr.nip04 || !window.nostr.nip04.encrypt) {
-                                throw new Error('NIP-04の暗号化がサポートされていません。');
-                            }
-                            // NIP-04で暗号化
-                            encryptedContent = await window.nostr.nip04.encrypt(currentPubkey, contentPayload);
-                        }
-                    }
-
-                    // タグを生成
-                    const newTags = [];
-                    const pubkeysInTags = new Set(); // 重複チェック用のSet
-                    
-                    // 既存のd-tagとtitle-tagがあれば追加
-                    if (originalDTag) {
-                        newTags.push(['d', originalDTag]);
-                    } else if (selectedEventId === 'new') {
-                        newTags.push(['d', 'follow-list']);
-                    }
-                    if (originalTitleTag) {
-                        newTags.push(['title', originalTitleTag]);
-                    }
-                    
-                    // 元のイベントのその他のタグを保持（p, d, title以外）
-                    if (selectedEventId !== 'new') {
-                        const existingEvent = allEvents.find(e => e.id === selectedEventId);
-                        if (existingEvent) {
-                            existingEvent.tags.filter(tag => tag[0] !== 'p' && tag[0] !== 'd' && tag[0] !== 'title')
-                                .forEach(tag => newTags.push(tag));
-                        }
-                    }
-
-                    // 公開リストのpタグを追加し、重複をチェック
-                    for (const pk of publicPubkeys) {
-                        if (!pubkeysInTags.has(pk)) {
-                            newTags.push(['p', pk]);
-                            pubkeysInTags.add(pk);
-                        }
-                    }
-                    
-                    // 非公開リストが存在する場合、自身の公開鍵をpタグに**必ず追加**
-                    if (privatePubkeys.length > 0 && !pubkeysInTags.has(currentPubkey)) {
-                        newTags.push(['p', currentPubkey]);
-                    }
-
-                    const newEvent = {
-                        kind: 30000,
-                        created_at: Math.floor(Date.now() / 1000),
-                        tags: newTags,
-                        content: encryptedContent
-                    };
-
-                    eventJsonTextarea.value = JSON.stringify(newEvent, null, 2);
-                    previewSection.classList.remove('hidden');
-                    updateStatus('イベントJSONが生成されました。内容を確認・編集し、署名・保存してください。', 'success');
-                } catch (error) {
-                    updateStatus(`JSON生成エラー: ${error.message}`, 'error');
-                    console.error('JSON生成エラー:', error);
-                }
-            }
-
-            // イベントの署名とリレーへの送信
-            async function signAndSaveEvent() {
-                if (writableRelays.length === 0) {
-                    alert('リレーリストが読み込まれていません。');
-                    return;
-                }
-
-                updateStatus('イベントに署名してリレーに送信中...', 'pending');
-                relayStatusList.innerHTML = '';
-                relayStatusSection.classList.remove('hidden');
-
-                try {
-                    const newEvent = JSON.parse(eventJsonTextarea.value);
-                    const signedEvent = await window.nostr.signEvent(newEvent);
-                    
-                    writableRelays.forEach(relayUrl => {
-                        const statusElement = document.createElement('div');
-                        statusElement.className = 'relay-status pending';
-                        statusElement.textContent = `▶️ ${relayUrl} に送信中...`;
-                        relayStatusList.appendChild(statusElement);
-                        
-                        const ws = new WebSocket(relayUrl);
-                        ws.onopen = () => {
-                            ws.send(JSON.stringify(["EVENT", signedEvent]));
-                            
-                            const timeoutId = setTimeout(() => {
-                                if (statusElement.classList.contains('pending')) {
-                                    statusElement.textContent = `⚠️ ${relayUrl} への送信がタイムアウトしました`;
-                                    statusElement.className = 'relay-status error';
-                                    ws.close();
-                                }
-                            }, 8000);
-
-                            ws.onmessage = (event) => {
-                                const data = JSON.parse(event.data);
-                                if (data[0] === "OK" && data[1] === signedEvent.id) {
-                                    statusElement.textContent = `✅ ${relayUrl} に送信成功`;
-                                    statusElement.className = 'relay-status success';
-                                    clearTimeout(timeoutId);
-                                    ws.close();
-                                } else if (data[0] === "NOTICE" && data[1].includes(signedEvent.id)) {
-                                    statusElement.textContent = `❌ ${relayUrl} エラー: ${data[1]}`;
-                                    statusElement.className = 'relay-status error';
-                                    clearTimeout(timeoutId);
-                                    ws.close();
-                                }
-                            };
-
-                            ws.onerror = () => {
-                                statusElement.textContent = `❌ ${relayUrl} への接続または送信に失敗`;
-                                statusElement.className = 'relay-status error';
-                                clearTimeout(timeoutId);
-                                ws.close();
-                            };
-                        };
-                    });
-                    updateStatus('すべてのリレーへの送信処理を開始しました。', 'success');
-
-                } catch (error) {
-                    updateStatus('イベントの署名または送信に失敗しました。', 'error');
-                    console.error('署名または送信エラー:', error);
-                }
-            }
-
-            // イベントリスナーの設定
-            loadRelaysButton.addEventListener('click', loadRelayList);
-            loadListsButton.addEventListener('click', loadLists);
-            eventSelect.addEventListener('change', handleEventSelection);
-            previewButton.addEventListener('click', previewEvent);
-            saveButton.addEventListener('click', signAndSaveEvent);
+          // 保険で onclose でも返す（EOSE が来ない場合のため）
+          ws.onclose = () => {
+            // do nothing here; EOSE handler resolves normally
+          };
         });
-    </script>
+      }
+
+      // kind:10002 の r タグを解釈して書き込み可能リレーを抽出
+      function parseRelaysFromKind10002(event) {
+        const relayTags = (event.tags || []).filter(t => t[0] === 'r');
+        const relays = {};
+        relayTags.forEach(tag => {
+          const url = tag[1];
+          const perm = tag[2]; // 'read' / 'write' / undefined
+          if (!url) return;
+          let read = true, write = true;
+          if (perm === 'read') { read = true; write = false; }
+          else if (perm === 'write') { read = false; write = true; }
+          // undefined -> both true
+          relays[url] = { read, write };
+        });
+        return relays;
+      }
+
+      // リレーリスト読み込み
+      async function loadRelayList() {
+        if (!window.nostr || !window.nostr.getPublicKey) {
+          updateStatus('エラー: NIP-07対応の拡張機能が見つかりません。', 'error');
+          alert('NIP-07対応の拡張機能をインストールしてください (例: Alby, nos2x)。');
+          return;
+        }
+        updateStatus('リレーリストを読み込み中...', 'pending');
+        try {
+          currentPubkey = await window.nostr.getPublicKey();
+
+          // PUBLIC_RELAY から kind:10002 を取得（自分の公開鍵が author）
+          const relayEvents = await fetchNostrEventsFromRelay(PUBLIC_RELAY, { kinds: [10002], authors: [currentPubkey] });
+
+          if (!relayEvents || relayEvents.length === 0) {
+            throw new Error(`リレー ${PUBLIC_RELAY} から kind:10002 イベントが見つかりませんでした。`);
+          }
+
+          // 最新イベントを選ぶ
+          const latest = relayEvents.sort((a,b) => (b.created_at||0) - (a.created_at||0))[0];
+          const relaysMap = parseRelaysFromKind10002(latest);
+
+          const writable = Object.entries(relaysMap).filter(([_, v]) => v.write).map(([url]) => url);
+          if (writable.length === 0) {
+            throw new Error('書き込み可能なリレーが kind:10002 に定義されていませんでした。');
+          }
+
+          writableRelays = writable;
+          updateStatus(`書き込み可能なリレーを ${writableRelays.length} 件読み込みました。`, 'success');
+          loadRelaysButton.classList.add('hidden');
+          loadListsButton.classList.remove('hidden');
+        } catch (err) {
+          updateStatus(`エラー: ${err.message}`, 'error');
+          console.error(err);
+        }
+      }
+
+      // kind:30000 を読み込む
+      async function loadLists() {
+        if (!currentPubkey || writableRelays.length === 0) {
+          updateStatus('まずリレーリストを読み込んでください。', 'error');
+          return;
+        }
+        updateStatus('フォローリストを読み込み中...', 'pending');
+        allEvents = [];
+        const uniqueEvents = new Map();
+
+        const fetchListsFromRelay = async (relayUrl) => {
+          try {
+            const events = await fetchNostrEventsFromRelay(relayUrl, { kinds: [30000], authors: [currentPubkey] });
+            (events || []).forEach(e => uniqueEvents.set(e.id, e));
+          } catch (e) {
+            console.warn(`リレー ${relayUrl} からの取得失敗:`, e.message);
+          }
+        };
+
+        await Promise.allSettled(writableRelays.map(fetchListsFromRelay));
+        allEvents = Array.from(uniqueEvents.values()).sort((a,b) => (b.created_at||0) - (a.created_at||0));
+
+        renderEventSelector();
+        updateStatus(allEvents.length > 0 ? 'フォローリストの読み込みが完了しました。' : '既存のリストが見つかりませんでした。新しいリストを作成できます。', 'success');
+        editorSection.classList.remove('hidden');
+      }
+
+      function renderEventSelector(){
+        eventSelect.innerHTML = '';
+        const newOption = document.createElement('option');
+        newOption.textContent = '新しいリストを作成';
+        newOption.value = 'new';
+        eventSelect.appendChild(newOption);
+
+        allEvents.forEach(ev => {
+          const opt = document.createElement('option');
+          const dTag = (ev.tags || []).find(t => t[0] === 'd');
+          const titleTag = (ev.tags || []).find(t => t[0] === 'title');
+          const title = titleTag ? titleTag[1] : (dTag ? dTag[1] : `ID:${(ev.id||'').slice(0,8)}...`);
+          opt.textContent = title;
+          opt.value = ev.id;
+          eventSelect.appendChild(opt);
+        });
+
+        eventSelect.value = 'new';
+        eventSelect.dispatchEvent(new Event('change'));
+      }
+
+      async function handleEventSelection(){
+        selectedEventId = eventSelect.value;
+        publicPubkeysTextarea.value = '';
+        privatePubkeysTextarea.value = '';
+        eventInfo.textContent = '';
+        previewSection.classList.add('hidden');
+        originalDTag = null;
+        originalTitleTag = null;
+
+        if (selectedEventId === 'new') {
+          updateStatus('新しいリストを作成する準備ができました。', 'success');
+          eventInfo.textContent = '新しいリストを作成します。d-tagは自動で追加されます。';
+          return;
+        }
+
+        const eventToEdit = allEvents.find(e => e.id === selectedEventId);
+        if (!eventToEdit) {
+          updateStatus('選択されたイベントが見つかりません。', 'error');
+          return;
+        }
+
+        const dTag = (eventToEdit.tags || []).find(t => t[0] === 'd');
+        const titleTag = (eventToEdit.tags || []).find(t => t[0] === 'title');
+        originalDTag = dTag ? dTag[1] : null;
+        originalTitleTag = titleTag ? titleTag[1] : null;
+        eventInfo.textContent = `d-tag: ${originalDTag || 'なし'} / title-tag: ${originalTitleTag || 'なし'}`;
+
+        const publicPubkeys = (eventToEdit.tags || []).filter(t => t[0] === 'p').map(t => t[1]);
+        publicPubkeysTextarea.value = publicPubkeys.join('\n');
+
+        // 非公開 content を復号（存在する場合）
+        if (eventToEdit.content && eventToEdit.content.trim().length > 0) {
+          updateStatus('非公開リストを復号化中...', 'pending');
+          try {
+            let decryptedContent = null;
+            const isLikelyNip44 = typeof eventToEdit.content === 'string' && eventToEdit.content.startsWith('c'); // 保守的判定
+            if (isLikelyNip44 && window.nostr && window.nostr.nip44 && window.nostr.nip44.decrypt) {
+              decryptedContent = await window.nostr.nip44.decrypt(eventToEdit.pubkey, eventToEdit.content);
+              document.querySelector('input[name="encryption-type"][value="nip44"]').checked = true;
+            } else if (window.nostr && window.nostr.nip04 && window.nostr.nip04.decrypt) {
+              decryptedContent = await window.nostr.nip04.decrypt(eventToEdit.pubkey, eventToEdit.content);
+              document.querySelector('input[name="encryption-type"][value="nip04"]').checked = true;
+            } else {
+              throw new Error('復号用のNIP-04/NIP-44 APIが利用できません。');
+            }
+
+            const parsed = JSON.parse(decryptedContent);
+            const privatePubkeys = Array.isArray(parsed.p) ? parsed.p : [];
+            privatePubkeysTextarea.value = privatePubkeys.join('\n');
+            updateStatus('リストの読み込みと復号に成功しました。', 'success');
+          } catch (e) {
+            console.warn('復号失敗:', e);
+            privatePubkeysTextarea.value = '';
+            updateStatus('リストの復号に失敗しました。公開リストのみ表示しています。', 'error');
+          }
+        }
+      }
+
+      // 公開鍵入力を分割して配列にするユーティリティ
+      function splitPubkeys(raw) {
+        return raw.split(/[, \t\n]+/).map(s => s.trim()).filter(s => s.length > 0);
+      }
+
+      // プレビュー生成
+      async function previewEvent() {
+        if (!currentPubkey) { alert('まずリレーリストを読み込んでください。'); return; }
+
+        const publicPubkeys = splitPubkeys(publicPubkeysTextarea.value);
+        const privatePubkeys = splitPubkeys(privatePubkeysTextarea.value);
+
+        if (publicPubkeys.length === 0 && privatePubkeys.length === 0) {
+          alert('公開鍵が入力されていません。');
+          return;
+        }
+
+        updateStatus('イベントJSONを生成中...', 'pending');
+        try {
+          const selectedEncryption = document.querySelector('input[name="encryption-type"]:checked').value;
+          let encryptedContent = '';
+
+          if (privatePubkeys.length > 0) {
+            const payload = JSON.stringify({ p: privatePubkeys });
+            if (selectedEncryption === 'nip44') {
+              if (!window.nostr || !window.nostr.nip44 || !window.nostr.nip44.encrypt) throw new Error('NIP-44の暗号化がサポートされていません。');
+              encryptedContent = await window.nostr.nip44.encrypt(currentPubkey, payload);
+            } else {
+              if (!window.nostr || !window.nostr.nip04 || !window.nostr.nip04.encrypt) throw new Error('NIP-04の暗号化がサポートされていません。');
+              encryptedContent = await window.nostr.nip04.encrypt(currentPubkey, payload);
+            }
+          }
+
+          // タグの組み立て
+          const newTags = [];
+          const pubkeysInTags = new Set();
+
+          if (originalDTag) newTags.push(['d', originalDTag]);
+          else if (selectedEventId === 'new') newTags.push(['d', 'follow-list']);
+
+          if (originalTitleTag) newTags.push(['title', originalTitleTag]);
+
+          // 既存のイベントのその他タグを保持（p,d,titleを除く）
+          if (selectedEventId !== 'new') {
+            const existing = allEvents.find(e => e.id === selectedEventId);
+            if (existing && Array.isArray(existing.tags)) {
+              existing.tags.filter(t => !['p','d','title'].includes(t[0])).forEach(t => newTags.push(t.slice()));
+            }
+          }
+
+          // 公開 p タグを追加（重複排除）
+          for (const pk of publicPubkeys) {
+            if (!pubkeysInTags.has(pk)) {
+              newTags.push(['p', pk]);
+              pubkeysInTags.add(pk);
+            }
+          }
+
+          // 非公開がある場合、自身の pubkey を p タグに含める（仕様的に便利なので）
+          if (privatePubkeys.length > 0 && !pubkeysInTags.has(currentPubkey)) {
+            newTags.push(['p', currentPubkey]);
+            pubkeysInTags.add(currentPubkey);
+          }
+
+          const newEvent = {
+            kind: 30000,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: newTags,
+            content: encryptedContent || ''
+          };
+
+          eventJsonTextarea.value = JSON.stringify(newEvent, null, 2);
+          previewSection.classList.remove('hidden');
+          updateStatus('イベントJSONが生成されました。内容を確認してください。', 'success');
+        } catch (e) {
+          console.error(e);
+          updateStatus(`JSON生成エラー: ${e.message}`, 'error');
+        }
+      }
+
+      // 署名してリレーに送信
+      async function signAndSaveEvent() {
+        if (writableRelays.length === 0) { alert('リレーリストが読み込まれていません。'); return; }
+        updateStatus('イベントに署名してリレーに送信中...', 'pending');
+        relayStatusList.innerHTML = '';
+        relayStatusSection.classList.remove('hidden');
+
+        try {
+          const newEvent = JSON.parse(eventJsonTextarea.value);
+          if (!window.nostr || !window.nostr.signEvent) throw new Error('NIP-07 signEvent が利用できません。');
+          const signedEvent = await window.nostr.signEvent(newEvent);
+
+          writableRelays.forEach(relayUrl => {
+            const statusElm = document.createElement('div');
+            statusElm.className = 'relay-status pending';
+            statusElm.textContent = `▶️ ${relayUrl} に送信中...`;
+            relayStatusList.appendChild(statusElm);
+
+            let ws;
+            try {
+              ws = new WebSocket(relayUrl);
+            } catch (e) {
+              statusElm.textContent = `❌ ${relayUrl} の接続に失敗しました`;
+              statusElm.className = 'relay-status error';
+              return;
+            }
+
+            const timeoutId = setTimeout(() => {
+              if (statusElm.classList.contains('pending')) {
+                statusElm.textContent = `⚠️ ${relayUrl} への送信がタイムアウトしました`;
+                statusElm.className = 'relay-status error';
+                try { ws.close(); } catch(e){}
+              }
+            }, 8000);
+
+            ws.onopen = () => {
+              try { ws.send(JSON.stringify(["EVENT", signedEvent])); } catch (e) { /* ignore */ }
+            };
+
+            ws.onmessage = (ev) => {
+              try {
+                const data = JSON.parse(ev.data);
+                if (!Array.isArray(data) || data.length === 0) return;
+                if (data[0] === "OK" && data[1] === signedEvent.id) {
+                  clearTimeout(timeoutId);
+                  statusElm.textContent = `✅ ${relayUrl} に送信成功`;
+                  statusElm.className = 'relay-status success';
+                  try { ws.close(); } catch(e){}
+                } else if (data[0] === "NOTICE" && typeof data[1] === 'string' && data[1].includes(signedEvent.id)) {
+                  clearTimeout(timeoutId);
+                  statusElm.textContent = `❌ ${relayUrl} エラー: ${data[1]}`;
+                  statusElm.className = 'relay-status error';
+                  try { ws.close(); } catch(e){}
+                }
+              } catch (err) { console.warn('relay onmessage parse failed', err); }
+            };
+
+            ws.onerror = () => {
+              clearTimeout(timeoutId);
+              statusElm.textContent = `❌ ${relayUrl} への接続または送信に失敗`;
+              statusElm.className = 'relay-status error';
+              try { ws.close(); } catch(e){}
+            };
+          });
+
+          updateStatus('すべてのリレーへの送信処理を開始しました。', 'success');
+        } catch (e) {
+          console.error(e);
+          updateStatus('イベントの署名または送信に失敗しました。', 'error');
+        }
+      }
+
+      // イベント登録
+      loadRelaysButton.addEventListener('click', loadRelayList);
+      loadListsButton.addEventListener('click', loadLists);
+      eventSelect.addEventListener('change', handleEventSelection);
+      previewButton.addEventListener('click', previewEvent);
+      saveButton.addEventListener('click', signAndSaveEvent);
+    });
+  </script>
 </body>
 </html>
