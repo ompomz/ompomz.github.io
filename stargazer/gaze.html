@@ -82,6 +82,11 @@
             color: #555;
             margin-top: 5px;
         }
+        #status-message {
+            margin-top: 10px;
+            font-weight: bold;
+            color: #e74c3c;
+        }
     </style>
 </head>
 <body>
@@ -91,7 +96,8 @@
 
     <div id="controls">
         <button id="load-button">フォローリストを読み込む</button>
-        <p class="info-text">※ NIP-07対応の拡張機能と `wss://relay.nostr.band` への接続が必要です。</p>
+        <p class="info-text">※ NIP-07対応の拡張機能が必要です。</p>
+        <p id="status-message"></p>
     </div>
 
     <div id="event-selector-container" class="hidden">
@@ -116,10 +122,57 @@
             const newListContainer = document.getElementById('new-list-container');
             const pubkeyListTextarea = document.getElementById('pubkey-list-textarea');
             const eventInfo = document.querySelector('.event-info');
+            const statusMessage = document.getElementById('status-message');
 
-            const RELAY_URL = 'wss://relay.nostr.band';
+            const PUBLIC_RELAY = 'wss://relay.nostr.band';
+            let writableRelays = [];
             let allEvents = [];
             let currentEvent = null;
+
+            // kind:10002を取得して書き込み可能なリレーを設定する関数
+            async function getWritableRelays() {
+                return new Promise(async (resolve, reject) => {
+                    const pubkey = await window.nostr.getPublicKey();
+                    const ws = new WebSocket(PUBLIC_RELAY);
+                    let timeout = setTimeout(() => {
+                        ws.close();
+                        reject('kind:10002イベントの読み込みがタイムアウトしました。');
+                    }, 5000);
+
+                    ws.onopen = () => {
+                        const filter = {
+                            kinds: [10002],
+                            authors: [pubkey]
+                        };
+                        ws.send(JSON.stringify(["REQ", "my-relay-list", filter]));
+                    };
+
+                    ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        if (data[0] === "EVENT") {
+                            const nostrEvent = data[2];
+                            const relays = nostrEvent.tags
+                                .filter(tag => tag[0] === 'r' && tag[2] === 'write')
+                                .map(tag => tag[1]);
+                            writableRelays = relays;
+                        } else if (data[0] === "EOSE") {
+                            clearTimeout(timeout);
+                            ws.close();
+                            if (writableRelays.length === 0) {
+                                reject('kind:10002イベントが見つからなかったか、書き込み可能なリレーが定義されていませんでした。');
+                            } else {
+                                resolve();
+                            }
+                        }
+                    };
+
+                    ws.onerror = () => {
+                        clearTimeout(timeout);
+                        ws.close();
+                        reject('リレーへの接続に失敗しました。');
+                    };
+                });
+            }
 
             // フォローリストの読み込み処理 (kind:30000)
             loadButton.addEventListener('click', async () => {
@@ -128,40 +181,65 @@
                     return;
                 }
                 
+                statusMessage.textContent = 'リレーリストを読み込み中...';
+                try {
+                    await getWritableRelays();
+                    statusMessage.textContent = `kind:10002に定義されたリレー: ${writableRelays.join(', ')} からリストを読み込みます。`;
+                } catch (e) {
+                    statusMessage.textContent = `エラー: ${e}`;
+                    alert(e);
+                    return;
+                }
+
                 allEvents = [];
                 eventSelect.innerHTML = '';
                 eventSelectorContainer.classList.add('hidden');
                 newListContainer.classList.add('hidden');
                 eventInfo.textContent = '';
-
+                
                 const pubkey = await window.nostr.getPublicKey();
-                const ws = new WebSocket(RELAY_URL);
-
-                ws.onopen = () => {
-                    const filter = {
-                        kinds: [30000],
-                        authors: [pubkey]
+                let eventsReceived = 0;
+                let connections = 0;
+                
+                writableRelays.forEach(relayUrl => {
+                    const ws = new WebSocket(relayUrl);
+                    connections++;
+                    
+                    ws.onopen = () => {
+                        const filter = {
+                            kinds: [30000],
+                            authors: [pubkey]
+                        };
+                        ws.send(JSON.stringify(["REQ", "my-follow-set-req", filter]));
                     };
-                    ws.send(JSON.stringify(["REQ", "my-follow-set-req", filter]));
-                };
 
-                ws.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    if (data[0] === "EVENT") {
-                        const nostrEvent = data[2];
-                        allEvents.push(nostrEvent);
-                    } else if (data[0] === "EOSE") {
-                        ws.close();
-                        if (allEvents.length === 0) {
-                            alert('kind:30000の非公開リストが見つかりませんでした。');
-                            return;
+                    ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        if (data[0] === "EVENT") {
+                            const nostrEvent = data[2];
+                            // 重複を避けるため、既存のイベントIDがないか確認
+                            if (!allEvents.some(e => e.id === nostrEvent.id)) {
+                                allEvents.push(nostrEvent);
+                            }
+                        } else if (data[0] === "EOSE") {
+                            ws.close();
+                            connections--;
+                            if (connections === 0) {
+                                // すべてのリレーからの応答が完了
+                                if (allEvents.length === 0) {
+                                    statusMessage.textContent = 'kind:30000の非公開リストが見つかりませんでした。';
+                                    alert('kind:30000の非公開リストが見つかりませんでした。');
+                                    return;
+                                }
+                                
+                                renderEventSelector(allEvents);
+                                eventSelectorContainer.classList.remove('hidden');
+                                newListContainer.classList.remove('hidden');
+                                statusMessage.textContent = '読み込みが完了しました。';
+                            }
                         }
-                        
-                        renderEventSelector(allEvents);
-                        eventSelectorContainer.classList.remove('hidden');
-                        newListContainer.classList.remove('hidden');
-                    }
-                };
+                    };
+                });
             });
 
             // イベント選択肢をレンダリングする関数
@@ -189,7 +267,6 @@
                 if (currentEvent) {
                     pubkeyListTextarea.value = '読み込み中...';
 
-                    // contentを復号してテキストエリアに表示
                     try {
                         const decryptedContent = await window.nostr.nip04.decrypt(currentEvent.pubkey, currentEvent.content);
                         const decryptedEvent = JSON.parse(decryptedContent);
@@ -215,6 +292,11 @@
                     return;
                 }
 
+                if (writableRelays.length === 0) {
+                    alert('kind:10002から書き込み可能なリレーが見つかりませんでした。');
+                    return;
+                }
+
                 const newPubkeys = pubkeyListTextarea.value.split(/,|\t| |\n/).map(s => s.trim()).filter(s => s.length > 0);
                 
                 if (newPubkeys.length === 0) {
@@ -222,7 +304,6 @@
                     return;
                 }
                 
-                // 新しいリストをJSON形式で暗号化
                 let encryptedContent;
                 try {
                     encryptedContent = await window.nostr.nip04.encrypt(currentEvent.pubkey, JSON.stringify({ p: newPubkeys }));
@@ -232,7 +313,6 @@
                     return;
                 }
 
-                // 公開部分は空のまま、非公開部分をcontentに設定
                 const newTags = currentEvent.tags.filter(tag => tag[0] !== 'p' && tag[0] !== 'e' && tag[0] !== 'd');
                 
                 const dTag = currentEvent.tags.find(tag => tag[0] === 'd');
@@ -249,13 +329,21 @@
 
                 try {
                     const signedEvent = await window.nostr.signEvent(newEvent);
-                    const ws = new WebSocket(RELAY_URL);
-                    ws.onopen = () => {
-                        ws.send(JSON.stringify(["EVENT", signedEvent]));
-                        console.log('イベントを公開しました:', signedEvent);
-                        alert('非公開リストが保存されました！');
-                        ws.close();
-                    };
+                    
+                    // kind:10002で取得したリレーすべてに送信
+                    writableRelays.forEach(relayUrl => {
+                        const ws = new WebSocket(relayUrl);
+                        ws.onopen = () => {
+                            ws.send(JSON.stringify(["EVENT", signedEvent]));
+                            console.log(`イベントを${relayUrl}に公開しました:`, signedEvent);
+                            ws.close();
+                        };
+                        ws.onerror = (error) => {
+                            console.error(`リレー${relayUrl}への送信に失敗しました:`, error);
+                        };
+                    });
+
+                    alert('非公開リストが保存されました！');
                 } catch (error) {
                     console.error('署名または公開に失敗しました:', error);
                     alert('保存に失敗しました。');
