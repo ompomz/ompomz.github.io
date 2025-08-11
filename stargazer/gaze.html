@@ -75,6 +75,7 @@
             cursor: pointer;
             transition: background-color 0.2s;
             margin-top: 10px;
+            margin-right: 10px; /* ボタン間にスペースを追加 */
         }
         #load-button {
             background-color: #3498db;
@@ -82,6 +83,13 @@
         }
         #load-button:hover {
             background-color: #2980b9;
+        }
+        #load-private-button { /* 新しいボタンのスタイル */
+            background-color: #e67e22;
+            color: white;
+        }
+        #load-private-button:hover {
+            background-color: #d35400;
         }
         #save-button {
             background-color: #2ecc71;
@@ -114,6 +122,7 @@
 
     <div id="controls">
         <button id="load-button">フォローリストを読み込む</button>
+        <button id="load-private-button">非公開リストを読み込む</button>
         <div id="event-selector-container" class="hidden">
             <p>編集するリストを選択してください：</p>
             <select id="event-select"></select>
@@ -132,6 +141,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const profilesContainer = document.getElementById('profiles-container');
             const loadButton = document.getElementById('load-button');
+            const loadPrivateButton = document.getElementById('load-private-button');
             const saveButton = document.getElementById('save-button');
             const eventSelect = document.getElementById('event-select');
             const eventSelectorContainer = document.getElementById('event-selector-container');
@@ -140,6 +150,7 @@
             const RELAY_URL = 'wss://relay.nostr.band';
             let allEvents = [];
             let currentEvent = null;
+            let isPrivateList = false; // 非公開リストかどうかを追跡するフラグ
             let profileCache = {}; // プロフィール情報をキャッシュするオブジェクト
 
             // Sortable.js を初期化
@@ -148,24 +159,38 @@
                 ghostClass: 'sortable-ghost'
             });
 
-            // フォローリストの読み込み処理
+            // フォローリストの読み込み処理 (kind:30000, 公開リスト)
             loadButton.addEventListener('click', async () => {
                 if (!window.nostr) {
                     alert('NIP-07対応の拡張機能が見つかりません。');
                     return;
                 }
+                await loadEvents([30000], false);
+            });
+            
+            // 非公開リストの読み込み処理 (kind:10000, 暗号化リスト)
+            loadPrivateButton.addEventListener('click', async () => {
+                if (!window.nostr || !window.nostr.nip04) {
+                    alert('NIP-07およびNIP-04に対応した拡張機能が必要です。');
+                    return;
+                }
+                await loadEvents([10000], true);
+            });
 
+            // イベントを読み込む共通関数
+            async function loadEvents(kinds, isPrivate) {
                 allEvents = [];
                 profilesContainer.innerHTML = '';
                 eventSelectorContainer.classList.add('hidden');
                 saveButton.classList.add('hidden');
+                isPrivateList = isPrivate;
 
                 const pubkey = await window.nostr.getPublicKey();
                 const ws = new WebSocket(RELAY_URL);
 
                 ws.onopen = () => {
                     const filter = {
-                        kinds: [30000],
+                        kinds: kinds,
                         authors: [pubkey]
                     };
                     ws.send(JSON.stringify(["REQ", "my-follow-set-req", filter]));
@@ -179,7 +204,7 @@
                     } else if (data[0] === "EOSE") {
                         ws.close();
                         if (allEvents.length === 0) {
-                            alert('kind:30000のフォローリストが見つかりませんでした。');
+                            alert(isPrivateList ? 'kind:10000の非公開リストが見つかりませんでした。' : 'kind:30000のフォローリストが見つかりませんでした。');
                             return;
                         }
                         
@@ -188,7 +213,7 @@
                         saveButton.classList.remove('hidden');
                     }
                 };
-            });
+            }
 
             // イベント選択肢をレンダリングする関数
             function renderEventSelector(events) {
@@ -199,7 +224,7 @@
                     const titleTag = event.tags.find(tag => tag[0] === 'title');
                     const eventTitle = titleTag ? titleTag[1] : (dTag ? dTag[1] : `ID: ${event.id.slice(0, 8)}...`);
                     
-                    option.textContent = eventTitle;
+                    option.textContent = `${isPrivateList ? '🔒' : ''} ${eventTitle}`;
                     option.value = event.id;
                     eventSelect.appendChild(option);
                 });
@@ -213,13 +238,31 @@
                 currentEvent = allEvents.find(event => event.id === selectedId);
 
                 if (currentEvent) {
-                    const pTags = currentEvent.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]);
+                    profilesContainer.innerHTML = '<li>読み込み中...</li>';
+
+                    let pubkeys = [];
+                    // 非公開リストの場合は復号
+                    if (isPrivateList) {
+                        try {
+                            const decryptedContent = await window.nostr.nip04.decrypt(currentEvent.pubkey, currentEvent.content);
+                            const decryptedEvent = JSON.parse(decryptedContent);
+                            pubkeys = decryptedEvent.p;
+                        } catch (e) {
+                            alert('非公開リストの復号に失敗しました。');
+                            profilesContainer.innerHTML = '<li>復号に失敗しました。</li>';
+                            console.error('Decryption failed:', e);
+                            return;
+                        }
+                    } else {
+                        // 公開リストの場合はタグから抽出
+                        pubkeys = currentEvent.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]);
+                    }
                     
                     // プロフィール情報を取得
-                    await fetchProfiles(pTags);
+                    await fetchProfiles(pubkeys);
                     
                     // プロフィールをレンダリング
-                    renderProfiles(pTags);
+                    renderProfiles(pubkeys);
                     
                     const dTag = currentEvent.tags.find(tag => tag[0] === 'd');
                     const titleTag = currentEvent.tags.find(tag => tag[0] === 'title');
@@ -229,7 +272,6 @@
 
             // プロフィール情報を取得する関数
             async function fetchProfiles(pubkeys) {
-                // キャッシュにない公開鍵のみを抽出
                 const missingPubkeys = pubkeys.filter(pubkey => !profileCache[pubkey]);
 
                 if (missingPubkeys.length === 0) return;
@@ -293,16 +335,34 @@
 
                 const updatedPubkeys = Array.from(profilesContainer.children).map(li => li.dataset.pubkey);
                 
-                const newTags = currentEvent.tags
-                    .filter(tag => tag[0] !== 'p')
-                    .concat(updatedPubkeys.map(pubkey => ["p", pubkey]));
+                let newEvent;
+                const newTags = currentEvent.tags.filter(tag => tag[0] !== 'p' && tag[0] !== 'e' && tag[0] !== 'd');
                 
-                const newEvent = {
-                    kind: 30000,
-                    created_at: Math.floor(Date.now() / 1000),
-                    tags: newTags,
-                    content: ""
-                };
+                if (isPrivateList) {
+                    // 非公開リストの場合は、公開鍵リストをJSON形式で暗号化
+                    const encryptedContent = await window.nostr.nip04.encrypt(currentEvent.pubkey, JSON.stringify({ p: updatedPubkeys }));
+                    newEvent = {
+                        kind: 10000,
+                        created_at: Math.floor(Date.now() / 1000),
+                        tags: newTags,
+                        content: encryptedContent
+                    };
+                } else {
+                    // 公開リストの場合は、公開鍵リストをpタグに追加
+                    const pTags = updatedPubkeys.map(pubkey => ["p", pubkey]);
+                    newEvent = {
+                        kind: 30000,
+                        created_at: Math.floor(Date.now() / 1000),
+                        tags: newTags.concat(pTags),
+                        content: ""
+                    };
+                }
+                
+                // 元のイベントのdタグを継承
+                const dTag = currentEvent.tags.find(tag => tag[0] === 'd');
+                if (dTag) {
+                    newEvent.tags.push(dTag);
+                }
 
                 try {
                     const signedEvent = await window.nostr.signEvent(newEvent);
