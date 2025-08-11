@@ -87,6 +87,26 @@
             font-weight: bold;
             color: #e74c3c;
         }
+        #relay-status-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .relay-status {
+            margin-bottom: 5px;
+            font-family: monospace;
+        }
+        .relay-status.success {
+            color: #27ae60;
+        }
+        .relay-status.error {
+            color: #e74c3c;
+        }
+        .relay-status.pending {
+            color: #f39c12;
+        }
     </style>
 </head>
 <body>
@@ -113,6 +133,11 @@
         <button id="save-button">新しいリストを保存する</button>
     </div>
 
+    <div id="relay-status-container" class="hidden">
+        <h3>リレー送信状況</h3>
+        <div id="relay-status-list"></div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const loadButton = document.getElementById('load-button');
@@ -123,13 +148,14 @@
             const pubkeyListTextarea = document.getElementById('pubkey-list-textarea');
             const eventInfo = document.querySelector('.event-info');
             const statusMessage = document.getElementById('status-message');
+            const relayStatusContainer = document.getElementById('relay-status-container');
+            const relayStatusList = document.getElementById('relay-status-list');
 
             const PUBLIC_RELAY = 'wss://relay.nostr.band';
             let writableRelays = [];
             let allEvents = [];
             let currentEvent = null;
 
-            // kind:10002を取得して書き込み可能なリレーを設定する関数
             async function getWritableRelays() {
                 return new Promise(async (resolve, reject) => {
                     const pubkey = await window.nostr.getPublicKey();
@@ -174,7 +200,6 @@
                 });
             }
 
-            // フォローリストの読み込み処理 (kind:30000)
             loadButton.addEventListener('click', async () => {
                 if (!window.nostr || !window.nostr.nip04) {
                     alert('NIP-07およびNIP-04に対応した拡張機能が必要です。');
@@ -239,7 +264,6 @@
                 });
             });
 
-            // イベント選択肢をレンダリングする関数
             function renderEventSelector(events) {
                 eventSelect.innerHTML = '';
                 events.forEach(event => {
@@ -256,7 +280,6 @@
                 eventSelect.dispatchEvent(new Event('change'));
             }
 
-            // イベントが選択されたときの処理
             eventSelect.addEventListener('change', async () => {
                 const selectedId = eventSelect.value;
                 currentEvent = allEvents.find(event => event.id === selectedId);
@@ -281,7 +304,6 @@
                 }
             });
 
-            // 変更を保存する処理
             saveButton.addEventListener('click', async () => {
                 if (!currentEvent) {
                     alert('先にフォローリストを読み込んでください。');
@@ -314,19 +336,48 @@
                 try {
                     const signedEvent = await window.nostr.signEvent(newEvent);
                     
+                    relayStatusContainer.classList.remove('hidden');
+                    relayStatusList.innerHTML = '';
+                    
                     writableRelays.forEach(relayUrl => {
+                        const statusElement = document.createElement('div');
+                        statusElement.className = 'relay-status pending';
+                        statusElement.textContent = `▶️ ${relayUrl} に送信中...`;
+                        relayStatusList.appendChild(statusElement);
+
                         const ws = new WebSocket(relayUrl);
+                        
                         ws.onopen = () => {
                             ws.send(JSON.stringify(["EVENT", signedEvent]));
-                            console.log(`イベントを${relayUrl}に公開しました:`, signedEvent);
-                            ws.close();
+                            
+                            // リレーからのOKメッセージを待つ
+                            ws.onmessage = (event) => {
+                                const data = JSON.parse(event.data);
+                                if (data[0] === "OK" && data[1] === signedEvent.id) {
+                                    statusElement.textContent = `✅ ${relayUrl} に送信成功`;
+                                    statusElement.className = 'relay-status success';
+                                    ws.close();
+                                }
+                            };
+                            
+                            // タイムアウト設定
+                            setTimeout(() => {
+                                if (ws.readyState === WebSocket.OPEN) {
+                                    statusElement.textContent = `⚠️ ${relayUrl} への送信がタイムアウトしました`;
+                                    statusElement.className = 'relay-status error';
+                                    ws.close();
+                                }
+                            }, 5000);
                         };
+                        
                         ws.onerror = (error) => {
-                            console.error(`リレー${relayUrl}への送信に失敗しました:`, error);
+                            console.error(`リレー${relayUrl}への接続に失敗しました:`, error);
+                            statusElement.textContent = `❌ ${relayUrl} への接続または送信に失敗`;
+                            statusElement.className = 'relay-status error';
+                            ws.close();
                         };
                     });
 
-                    alert('非公開リストが保存されました！');
                 } catch (error) {
                     console.error('署名または公開に失敗しました:', error);
                     alert('保存に失敗しました。');
