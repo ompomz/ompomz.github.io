@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nostr フォローリストエディター（非公開リスト）</title>
+    <title>Nostr フォローリストエディター</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -29,11 +29,18 @@
             margin-top: 10px;
             margin-right: 10px;
         }
-        #load-button {
+        #load-relays-button {
             background-color: #3498db;
             color: white;
         }
-        #load-button:hover {
+        #load-relays-button:hover {
+            background-color: #2980b9;
+        }
+        #load-lists-button {
+            background-color: #3498db;
+            color: white;
+        }
+        #load-lists-button:hover {
             background-color: #2980b9;
         }
         #save-button {
@@ -50,7 +57,12 @@
             color: #888;
             margin-top: 20px;
         }
-        #event-selector-container, #new-list-container {
+        #status-message {
+            margin-top: 10px;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        #event-selector-container, #pubkey-list-container {
             margin-top: 20px;
             padding: 15px;
             background-color: #fff;
@@ -82,11 +94,6 @@
             color: #555;
             margin-top: 5px;
         }
-        #status-message {
-            margin-top: 10px;
-            font-weight: bold;
-            color: #e74c3c;
-        }
         #relay-status-container {
             margin-top: 20px;
             padding: 15px;
@@ -111,11 +118,12 @@
 </head>
 <body>
 
-    <h1>Nostr 非公開フォローリストエディター</h1>
-    <p>kind:30000イベントの**非公開部分 (content)** を編集します。公開されているpタグには影響しません。</p>
+    <h1>Nostr フォローリストエディター</h1>
+    <p>kind:30000イベントの**公開部分（pタグ）**と**非公開部分（content）**を同時に編集・保存します。</p>
 
     <div id="controls">
-        <button id="load-button">フォローリストを読み込む</button>
+        <button id="load-relays-button">リレーリストを読み込む</button>
+        <button id="load-lists-button" class="hidden">フォローリストを読み込む</button>
         <p class="info-text">※ NIP-07対応の拡張機能が必要です。</p>
         <p id="status-message"></p>
     </div>
@@ -126,10 +134,10 @@
         <p class="event-info"></p>
     </div>
     
-    <div id="new-list-container" class="hidden">
+    <div id="pubkey-list-container" class="hidden">
         <h3>新しい公開鍵リストを貼り付けてください</h3>
         <p>カンマ、タブ、スペース、または改行で区切られた公開鍵（hex形式）を貼り付けてください。</p>
-        <textarea id="pubkey-list-textarea"></textarea>
+        <textarea id="pubkey-list-textarea" autocomplete="off"></textarea>
         <button id="save-button">新しいリストを保存する</button>
     </div>
 
@@ -140,11 +148,12 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const loadButton = document.getElementById('load-button');
+            const loadRelaysButton = document.getElementById('load-relays-button');
+            const loadListsButton = document.getElementById('load-lists-button');
             const saveButton = document.getElementById('save-button');
             const eventSelect = document.getElementById('event-select');
             const eventSelectorContainer = document.getElementById('event-selector-container');
-            const newListContainer = document.getElementById('new-list-container');
+            const pubkeyListContainer = document.getElementById('pubkey-list-container');
             const pubkeyListTextarea = document.getElementById('pubkey-list-textarea');
             const eventInfo = document.querySelector('.event-info');
             const statusMessage = document.getElementById('status-message');
@@ -158,6 +167,9 @@
 
             async function getWritableRelays() {
                 return new Promise(async (resolve, reject) => {
+                    if (!window.nostr || !window.nostr.nip04) {
+                        return reject('NIP-07およびNIP-04に対応した拡張機能が必要です。');
+                    }
                     const pubkey = await window.nostr.getPublicKey();
                     const ws = new WebSocket(PUBLIC_RELAY);
                     let timeout = setTimeout(() => {
@@ -177,10 +189,9 @@
                         const data = JSON.parse(event.data);
                         if (data[0] === "EVENT") {
                             const nostrEvent = data[2];
-                            const relays = nostrEvent.tags
+                            writableRelays = nostrEvent.tags
                                 .filter(tag => tag[0] === 'r' && tag[2] === 'write')
                                 .map(tag => tag[1]);
-                            writableRelays = relays;
                         } else if (data[0] === "EOSE") {
                             clearTimeout(timeout);
                             ws.close();
@@ -200,26 +211,25 @@
                 });
             }
 
-            loadButton.addEventListener('click', async () => {
-                if (!window.nostr || !window.nostr.nip04) {
-                    alert('NIP-07およびNIP-04に対応した拡張機能が必要です。');
-                    return;
-                }
-                
+            loadRelaysButton.addEventListener('click', async () => {
                 statusMessage.textContent = 'リレーリストを読み込み中...';
                 try {
                     await getWritableRelays();
-                    statusMessage.textContent = `kind:10002に定義されたリレー: ${writableRelays.join(', ')} からリストを読み込みます。`;
+                    statusMessage.textContent = `kind:10002に定義されたリレー: ${writableRelays.join(', ')} を読み込みました。`;
+                    loadRelaysButton.classList.add('hidden');
+                    loadListsButton.classList.remove('hidden');
                 } catch (e) {
                     statusMessage.textContent = `エラー: ${e}`;
                     alert(e);
-                    return;
                 }
+            });
 
+            loadListsButton.addEventListener('click', async () => {
+                statusMessage.textContent = 'フォローリストを読み込み中...';
                 allEvents = [];
                 eventSelect.innerHTML = '';
                 eventSelectorContainer.classList.add('hidden');
-                newListContainer.classList.add('hidden');
+                pubkeyListContainer.classList.add('hidden');
                 eventInfo.textContent = '';
                 
                 const pubkey = await window.nostr.getPublicKey();
@@ -249,14 +259,14 @@
                             connections--;
                             if (connections === 0) {
                                 if (allEvents.length === 0) {
-                                    statusMessage.textContent = 'kind:30000の非公開リストが見つかりませんでした。';
-                                    alert('kind:30000の非公開リストが見つかりませんでした。');
+                                    statusMessage.textContent = 'kind:30000のリストが見つかりませんでした。';
+                                    alert('kind:30000のリストが見つかりませんでした。');
                                     return;
                                 }
                                 
                                 renderEventSelector(allEvents);
                                 eventSelectorContainer.classList.remove('hidden');
-                                newListContainer.classList.remove('hidden');
+                                pubkeyListContainer.classList.remove('hidden');
                                 statusMessage.textContent = '読み込みが完了しました。';
                             }
                         }
@@ -287,15 +297,22 @@
                 if (currentEvent) {
                     pubkeyListTextarea.value = '読み込み中...';
                     try {
-                        const decryptedContent = await window.nostr.nip04.decrypt(currentEvent.pubkey, currentEvent.content);
-                        const decryptedEvent = JSON.parse(decryptedContent);
-                        const pubkeys = decryptedEvent.p || [];
-                        pubkeyListTextarea.value = pubkeys.join('\n');
+                        // contentが暗号化されているかチェック
+                        let decryptedPubkeys;
+                        if (currentEvent.content.startsWith('B')) {
+                            const decryptedContent = await window.nostr.nip04.decrypt(currentEvent.pubkey, currentEvent.content);
+                            const decryptedEvent = JSON.parse(decryptedContent);
+                            decryptedPubkeys = decryptedEvent.p || [];
+                        } else {
+                            // contentが暗号化されていない場合、pタグから読み込む
+                            decryptedPubkeys = currentEvent.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]);
+                        }
+                        pubkeyListTextarea.value = decryptedPubkeys.join('\n');
                     } catch (e) {
-                        alert('非公開リストの復号に失敗しました。');
-                        pubkeyListTextarea.value = '';
+                        alert('リストの復号に失敗しました。公開リストとして読み込みます。');
+                        const pTags = currentEvent.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]);
+                        pubkeyListTextarea.value = pTags.join('\n');
                         console.error('Decryption failed:', e);
-                        return;
                     }
                     
                     const dTag = currentEvent.tags.find(tag => tag[0] === 'd');
@@ -322,15 +339,20 @@
                     return;
                 }
                 
-                const encryptedContentAndIv = await window.nostr.nip04.encrypt(currentEvent.pubkey, JSON.stringify({ p: newPubkeys }));
+                // 非公開リストとして暗号化する
+                const encryptedContent = await window.nostr.nip04.encrypt(currentEvent.pubkey, JSON.stringify({ p: newPubkeys }));
 
+                // 公開タグリストを作成する
                 const newTags = currentEvent.tags.filter(tag => tag[0] !== 'p' && tag[0] !== 'e');
-                
+                newPubkeys.forEach(pubkey => {
+                    newTags.push(['p', pubkey]);
+                });
+
                 const newEvent = {
                     kind: 30000,
                     created_at: Math.floor(Date.now() / 1000),
                     tags: newTags,
-                    content: encryptedContentAndIv
+                    content: encryptedContent
                 };
 
                 try {
@@ -350,7 +372,6 @@
                         ws.onopen = () => {
                             ws.send(JSON.stringify(["EVENT", signedEvent]));
                             
-                            // リレーからのOKメッセージを待つ
                             ws.onmessage = (event) => {
                                 const data = JSON.parse(event.data);
                                 if (data[0] === "OK" && data[1] === signedEvent.id) {
@@ -360,7 +381,6 @@
                                 }
                             };
                             
-                            // タイムアウト設定
                             setTimeout(() => {
                                 if (ws.readyState === WebSocket.OPEN) {
                                     statusElement.textContent = `⚠️ ${relayUrl} への送信がタイムアウトしました`;
@@ -377,7 +397,6 @@
                             ws.close();
                         };
                     });
-
                 } catch (error) {
                     console.error('署名または公開に失敗しました:', error);
                     alert('保存に失敗しました。');
@@ -385,5 +404,3 @@
             });
         });
     </script>
-</body>
-</html>
