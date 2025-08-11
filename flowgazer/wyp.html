@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nostr フォローリストエディター</title>
+    <title>want you peek（フォローリストエディター）</title>
     <style>
         /* リセットと基本スタイル */
         body {
@@ -155,7 +155,7 @@
 <body>
 
     <div class="container">
-        <h1>Nostr フォローリストエディター</h1>
+        <h1>Nostr フォローリストエディター (NIP-44)</h1>
         <p>kind:30000イベントの**公開部分（pタグ）**と**非公開部分（content）**を同時に編集・保存します。</p>
 
         <section id="status-section">
@@ -415,7 +415,8 @@
                 if (eventToEdit.content) {
                     try {
                         updateStatus('非公開リストを復号化中...', 'pending');
-                        const decryptedContent = await window.nostr.nip04.decrypt(eventToEdit.pubkey, eventToEdit.content);
+                        // NIP-04からNIP-44のdecryptに変更
+                        const decryptedContent = await window.nostr.nip44.decrypt(eventToEdit.pubkey, eventToEdit.content);
                         const decryptedEvent = JSON.parse(decryptedContent);
                         const privatePubkeys = decryptedEvent.p || [];
                         privatePubkeysTextarea.value = privatePubkeys.join('\n');
@@ -446,7 +447,8 @@
                 updateStatus('イベントJSONを生成中...', 'pending');
                 
                 try {
-                    const encryptedContent = await window.nostr.nip04.encrypt(currentPubkey, JSON.stringify({ p: privatePubkeys }));
+                    // NIP-04からNIP-44のencryptに変更
+                    const encryptedContent = await window.nostr.nip44.encrypt(currentPubkey, JSON.stringify({ p: privatePubkeys }));
                     
                     let newTags = [];
                     if (selectedEventId !== 'new') {
@@ -522,7 +524,7 @@
                                     clearTimeout(timeoutId);
                                     ws.close();
                                 } else if (data[0] === "NOTICE" && data[1].includes(signedEvent.id)) {
-                                     statusElement.textContent = `❌ ${relayUrl} エラー: ${data[1]}`;
+                                    statusElement.textContent = `❌ ${relayUrl} エラー: ${data[1]}`;
                                     statusElement.className = 'relay-status error';
                                     clearTimeout(timeoutId);
                                     ws.close();
