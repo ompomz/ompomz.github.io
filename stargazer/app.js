@@ -22,6 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPubkey = null;
     let selectedEventId = null;
 
+    const PUBLIC_RELAY = 'wss://relay.nostr.band';
+
     // UIの状態を更新するヘルパー関数
     function updateStatus(message, type = 'default') {
         statusMessage.textContent = message;
@@ -35,6 +37,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // WebSocket経由でNostrイベントを取得する汎用関数
+    function fetchNostrEventsFromRelay(relayUrl, filter) {
+        return new Promise((resolve, reject) => {
+            const ws = new WebSocket(relayUrl);
+            const timeoutId = setTimeout(() => {
+                ws.close();
+                reject(new Error(`リレー ${relayUrl} でのイベント取得がタイムアウトしました。`));
+            }, 8000);
+
+            let events = [];
+            ws.onopen = () => {
+                ws.send(JSON.stringify(["REQ", `fetch-req-${Date.now()}`, filter]));
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data[0] === "EVENT") {
+                    events.push(data[2]);
+                } else if (data[0] === "EOSE") {
+                    clearTimeout(timeoutId);
+                    ws.close();
+                    resolve(events);
+                }
+            };
+
+            ws.onerror = () => {
+                clearTimeout(timeoutId);
+                ws.close();
+                reject(new Error(`リレー ${relayUrl} への接続に失敗しました。`));
+            };
+        });
+    }
+
     // リレーリストの読み込み
     async function loadRelayList() {
         if (!window.nostr || !window.nostr.getPublicKey) {
@@ -46,18 +81,42 @@ document.addEventListener('DOMContentLoaded', () => {
         updateStatus('リレーリストを読み込み中...', 'pending');
         try {
             currentPubkey = await window.nostr.getPublicKey();
-            const relays = await window.nostr.getRelays();
+            
+            // wss://relay.nostr.band から kind:10002 イベントを取得
+            const relayEvents = await fetchNostrEventsFromRelay(PUBLIC_RELAY, {
+                kinds: [10002],
+                authors: [currentPubkey]
+            });
+            
+            let relays = {};
+            if (relayEvents.length > 0) {
+                const latestEvent = relayEvents.sort((a, b) => b.created_at - a.created_at)[0];
+                const relayTags = latestEvent.tags.filter(tag => tag[0] === 'r');
+                relays = relayTags.reduce((acc, tag) => {
+                    const [_, url, permission] = tag;
+                    if (url) {
+                        acc[url] = { read: permission !== 'write', write: permission !== 'read' };
+                    }
+                    return acc;
+                }, {});
+            }
+
+            if (Object.keys(relays).length === 0) {
+                throw new Error(`リレー ${PUBLIC_RELAY} から kind:10002 イベントが見つかりませんでした。`);
+            }
+
             writableRelays = Object.entries(relays)
                 .filter(([url, { write }]) => write)
                 .map(([url]) => url);
-
+            
             if (writableRelays.length === 0) {
-                throw new Error('書き込み可能なリレーが見つかりませんでした。');
+                throw new Error('書き込み可能なリレーがkind:10002イベントに定義されていませんでした。');
             }
 
             updateStatus(`書き込み可能なリレーを${writableRelays.length}件読み込みました。`, 'success');
             loadRelaysButton.classList.add('hidden');
             loadListsButton.classList.remove('hidden');
+
         } catch (error) {
             updateStatus(`エラー: ${error.message}`, 'error');
             console.error('リレーリストの読み込みに失敗しました:', error);
@@ -66,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // kind:30000リストの読み込み
     async function loadLists() {
-        if (!currentPubkey) {
+        if (!currentPubkey || writableRelays.length === 0) {
             updateStatus('まずリレーリストを読み込んでください。', 'error');
             return;
         }
@@ -74,45 +133,22 @@ document.addEventListener('DOMContentLoaded', () => {
         updateStatus('フォローリストを読み込み中...', 'pending');
         allEvents = [];
         const uniqueEvents = new Map();
-        let processedRelays = 0;
 
         // WebSocket接続とイベント取得
-        const fetchEventsFromRelay = (relayUrl) => {
-            return new Promise((resolve) => {
-                const ws = new WebSocket(relayUrl);
-                const timeoutId = setTimeout(() => {
-                    ws.close();
-                    resolve([]);
-                }, 5000);
-
-                ws.onopen = () => {
-                    const filter = { kinds: [30000], authors: [currentPubkey] };
-                    ws.send(JSON.stringify(["REQ", `list-req-${Date.now()}`, filter]));
-                };
-
-                ws.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    if (data[0] === "EVENT") {
-                        const nostrEvent = data[2];
-                        uniqueEvents.set(nostrEvent.id, nostrEvent);
-                    } else if (data[0] === "EOSE") {
-                        clearTimeout(timeoutId);
-                        ws.close();
-                        resolve(Array.from(uniqueEvents.values()));
-                    }
-                };
-
-                ws.onerror = () => {
-                    clearTimeout(timeoutId);
-                    ws.close();
-                    resolve([]);
-                };
-            });
+        const fetchListsFromRelay = async (relayUrl) => {
+            try {
+                const events = await fetchNostrEventsFromRelay(relayUrl, {
+                    kinds: [30000],
+                    authors: [currentPubkey]
+                });
+                events.forEach(event => uniqueEvents.set(event.id, event));
+            } catch (error) {
+                console.error(`リレー ${relayUrl} からのリスト取得に失敗:`, error.message);
+            }
         };
 
         // 全リレーからイベントを並行して取得
-        const promises = writableRelays.map(fetchEventsFromRelay);
-        await Promise.allSettled(promises);
+        await Promise.allSettled(writableRelays.map(fetchListsFromRelay));
         allEvents = Array.from(uniqueEvents.values()).sort((a, b) => b.created_at - a.created_at);
 
         // UIの更新
