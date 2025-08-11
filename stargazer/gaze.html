@@ -198,7 +198,6 @@
                 eventInfo.textContent = '';
                 
                 const pubkey = await window.nostr.getPublicKey();
-                let eventsReceived = 0;
                 let connections = 0;
                 
                 writableRelays.forEach(relayUrl => {
@@ -217,7 +216,6 @@
                         const data = JSON.parse(event.data);
                         if (data[0] === "EVENT") {
                             const nostrEvent = data[2];
-                            // 重複を避けるため、既存のイベントIDがないか確認
                             if (!allEvents.some(e => e.id === nostrEvent.id)) {
                                 allEvents.push(nostrEvent);
                             }
@@ -225,7 +223,6 @@
                             ws.close();
                             connections--;
                             if (connections === 0) {
-                                // すべてのリレーからの応答が完了
                                 if (allEvents.length === 0) {
                                     statusMessage.textContent = 'kind:30000の非公開リストが見つかりませんでした。';
                                     alert('kind:30000の非公開リストが見つかりませんでした。');
@@ -266,15 +263,8 @@
 
                 if (currentEvent) {
                     pubkeyListTextarea.value = '読み込み中...';
-
                     try {
-                        let contentToDecrypt = currentEvent.content;
-                        const ivTag = currentEvent.tags.find(tag => tag[0] === 'iv');
-                        if (ivTag) {
-                            contentToDecrypt += `?iv=${ivTag[1]}`;
-                        }
-                        
-                        const decryptedContent = await window.nostr.nip04.decrypt(currentEvent.pubkey, contentToDecrypt);
+                        const decryptedContent = await window.nostr.nip04.decrypt(currentEvent.pubkey, currentEvent.content);
                         const decryptedEvent = JSON.parse(decryptedContent);
                         const pubkeys = decryptedEvent.p || [];
                         pubkeyListTextarea.value = pubkeys.join('\n');
@@ -310,38 +300,20 @@
                     return;
                 }
                 
-                // NIP-04の仕様に準拠するため、contentとivを分離
-                let encryptedContentAndIv;
-                try {
-                    encryptedContentAndIv = await window.nostr.nip04.encrypt(currentEvent.pubkey, JSON.stringify({ p: newPubkeys }));
-                } catch (e) {
-                    alert('暗号化に失敗しました。');
-                    console.error('Encryption failed:', e);
-                    return;
-                }
+                const encryptedContentAndIv = await window.nostr.nip04.encrypt(currentEvent.pubkey, JSON.stringify({ p: newPubkeys }));
 
-                const [encryptedContent, iv] = encryptedContentAndIv.split('?iv=');
-
-                const newTags = currentEvent.tags.filter(tag => tag[0] !== 'p' && tag[0] !== 'e' && tag[0] !== 'd' && tag[0] !== 'iv');
+                const newTags = currentEvent.tags.filter(tag => tag[0] !== 'p' && tag[0] !== 'e');
                 
-                const dTag = currentEvent.tags.find(tag => tag[0] === 'd');
-                if (dTag) {
-                    newTags.push(dTag);
-                }
-                
-                newTags.push(['iv', iv]);
-
                 const newEvent = {
                     kind: 30000,
                     created_at: Math.floor(Date.now() / 1000),
                     tags: newTags,
-                    content: encryptedContent
+                    content: encryptedContentAndIv
                 };
 
                 try {
                     const signedEvent = await window.nostr.signEvent(newEvent);
                     
-                    // kind:10002で取得したリレーすべてに送信
                     writableRelays.forEach(relayUrl => {
                         const ws = new WebSocket(relayUrl);
                         ws.onopen = () => {
