@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>want you peek（フォローリストエディター）</title>
+    <title>want you peek</title>
     <style>
         /* リセットと基本スタイル */
         body {
@@ -155,8 +155,8 @@
 <body>
 
     <div class="container">
-        <h1>Nostr フォローリストエディター (NIP-44)</h1>
-        <p>kind:30000イベントの**公開部分（pタグ）**と**非公開部分（content）**を同時に編集・保存します。</p>
+        <h1>want you peek（フォローリストエディター）</h1>
+        <p>kind:30000イベントの公開部分（pタグ）と非公開部分（content）を同時に編集・保存します。</p>
 
         <section id="status-section">
             <p id="status-message">ツールを利用するには、NIP-07対応の拡張機能が必要です。</p>
@@ -415,8 +415,22 @@
                 if (eventToEdit.content) {
                     try {
                         updateStatus('非公開リストを復号化中...', 'pending');
-                        // NIP-04からNIP-44のdecryptに変更
-                        const decryptedContent = await window.nostr.nip44.decrypt(eventToEdit.pubkey, eventToEdit.content);
+
+                        let decryptedContent = null;
+                        const isNip44 = eventToEdit.content.startsWith('c');
+
+                        if (isNip44) {
+                            // NIP-44での復号を試行
+                            decryptedContent = await window.nostr.nip44.decrypt(eventToEdit.pubkey, eventToEdit.content);
+                        } else {
+                            // NIP-04での復号を試行（NIP-04互換性のために追加）
+                            if (window.nostr.nip04 && window.nostr.nip04.decrypt) {
+                                decryptedContent = await window.nostr.nip04.decrypt(eventToEdit.pubkey, eventToEdit.content);
+                            } else {
+                                throw new Error('NIP-04復号化がサポートされていません。');
+                            }
+                        }
+
                         const decryptedEvent = JSON.parse(decryptedContent);
                         const privatePubkeys = decryptedEvent.p || [];
                         privatePubkeysTextarea.value = privatePubkeys.join('\n');
@@ -447,7 +461,7 @@
                 updateStatus('イベントJSONを生成中...', 'pending');
                 
                 try {
-                    // NIP-04からNIP-44のencryptに変更
+                    // NIP-44のencryptで暗号化
                     const encryptedContent = await window.nostr.nip44.encrypt(currentPubkey, JSON.stringify({ p: privatePubkeys }));
                     
                     let newTags = [];
