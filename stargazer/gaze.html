@@ -43,11 +43,18 @@
         #load-lists-button:hover {
             background-color: #2980b9;
         }
-        #save-button {
+        #preview-button {
+            background-color: #f39c12;
+            color: white;
+        }
+        #preview-button:hover {
+            background-color: #e67e22;
+        }
+        #sign-and-save-button {
             background-color: #2ecc71;
             color: white;
         }
-        #save-button:hover {
+        #sign-and-save-button:hover {
             background-color: #27ae60;
         }
         .hidden {
@@ -62,7 +69,7 @@
             font-weight: bold;
             color: #e74c3c;
         }
-        #event-selector-container, #pubkey-list-container {
+        #event-selector-container, #pubkey-list-container, #event-preview-container {
             margin-top: 20px;
             padding: 15px;
             background-color: #fff;
@@ -79,7 +86,7 @@
             box-sizing: border-box;
             margin-bottom: 10px;
         }
-        #pubkey-list-textarea {
+        #pubkey-list-textarea, #event-json-textarea {
             width: 100%;
             height: 200px;
             font-family: monospace;
@@ -88,6 +95,9 @@
             box-sizing: border-box;
             border: 1px solid #ccc;
             border-radius: 5px;
+        }
+        #event-json-textarea {
+            height: 300px; /* プレビュー用は高さを少し高く */
         }
         .event-info {
             font-size: 0.9em;
@@ -138,7 +148,13 @@
         <h3>新しい公開鍵リストを貼り付けてください</h3>
         <p>カンマ、タブ、スペース、または改行で区切られた公開鍵（hex形式）を貼り付けてください。</p>
         <textarea id="pubkey-list-textarea" autocomplete="off"></textarea>
-        <button id="save-button">新しいリストを保存する</button>
+        <button id="preview-button">JSONイベントをプレビュー</button>
+    </div>
+
+    <div id="event-preview-container" class="hidden">
+        <h3>生成されたイベントJSON（編集可能）</h3>
+        <textarea id="event-json-textarea" autocomplete="off"></textarea>
+        <button id="sign-and-save-button">署名してリレーに送信</button>
     </div>
 
     <div id="relay-status-container" class="hidden">
@@ -150,7 +166,10 @@
         document.addEventListener('DOMContentLoaded', () => {
             const loadRelaysButton = document.getElementById('load-relays-button');
             const loadListsButton = document.getElementById('load-lists-button');
-            const saveButton = document.getElementById('save-button');
+            // saveButtonをpreviewButtonとsignAndSaveButtonに分割
+            const previewButton = document.getElementById('preview-button');
+            const signAndSaveButton = document.getElementById('sign-and-save-button');
+            
             const eventSelect = document.getElementById('event-select');
             const eventSelectorContainer = document.getElementById('event-selector-container');
             const pubkeyListContainer = document.getElementById('pubkey-list-container');
@@ -159,6 +178,10 @@
             const statusMessage = document.getElementById('status-message');
             const relayStatusContainer = document.getElementById('relay-status-container');
             const relayStatusList = document.getElementById('relay-status-list');
+            
+            // 新しい要素の取得
+            const eventPreviewContainer = document.getElementById('event-preview-container');
+            const eventJsonTextarea = document.getElementById('event-json-textarea');
 
             const PUBLIC_RELAY = 'wss://relay.nostr.band';
             let writableRelays = [];
@@ -230,6 +253,7 @@
                 eventSelect.innerHTML = '';
                 eventSelectorContainer.classList.add('hidden');
                 pubkeyListContainer.classList.add('hidden');
+                eventPreviewContainer.classList.add('hidden'); // プレビューUIも非表示にする
                 eventInfo.textContent = '';
                 
                 const pubkey = await window.nostr.getPublicKey();
@@ -296,15 +320,14 @@
 
                 if (currentEvent) {
                     pubkeyListTextarea.value = '読み込み中...';
+                    eventPreviewContainer.classList.add('hidden'); // 選択が変わったらプレビューを隠す
                     try {
-                        // contentが暗号化されているかチェック
                         let decryptedPubkeys;
                         if (currentEvent.content.startsWith('B')) {
                             const decryptedContent = await window.nostr.nip04.decrypt(currentEvent.pubkey, currentEvent.content);
                             const decryptedEvent = JSON.parse(decryptedContent);
                             decryptedPubkeys = decryptedEvent.p || [];
                         } else {
-                            // contentが暗号化されていない場合、pタグから読み込む
                             decryptedPubkeys = currentEvent.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]);
                         }
                         pubkeyListTextarea.value = decryptedPubkeys.join('\n');
@@ -321,14 +344,10 @@
                 }
             });
 
-            saveButton.addEventListener('click', async () => {
+            // "新しいリストを保存する"ボタンをプレビューボタンに変更
+            previewButton.addEventListener('click', async () => {
                 if (!currentEvent) {
                     alert('先にフォローリストを読み込んでください。');
-                    return;
-                }
-
-                if (writableRelays.length === 0) {
-                    alert('kind:10002から書き込み可能なリレーが見つかりませんでした。');
                     return;
                 }
 
@@ -339,10 +358,8 @@
                     return;
                 }
                 
-                // 非公開リストとして暗号化する
                 const encryptedContent = await window.nostr.nip04.encrypt(currentEvent.pubkey, JSON.stringify({ p: newPubkeys }));
 
-                // 公開タグリストを作成する
                 const newTags = currentEvent.tags.filter(tag => tag[0] !== 'p' && tag[0] !== 'e');
                 newPubkeys.forEach(pubkey => {
                     newTags.push(['p', pubkey]);
@@ -355,7 +372,20 @@
                     content: encryptedContent
                 };
 
+                eventJsonTextarea.value = JSON.stringify(newEvent, null, 2);
+                eventPreviewContainer.classList.remove('hidden');
+                statusMessage.textContent = 'イベントJSONが生成されました。内容を確認・編集し、署名してください。';
+            });
+
+            // 新しく追加された署名・保存ボタン
+            signAndSaveButton.addEventListener('click', async () => {
+                if (writableRelays.length === 0) {
+                    alert('kind:10002から書き込み可能なリレーが見つかりませんでした。');
+                    return;
+                }
+
                 try {
+                    const newEvent = JSON.parse(eventJsonTextarea.value);
                     const signedEvent = await window.nostr.signEvent(newEvent);
                     
                     relayStatusContainer.classList.remove('hidden');
@@ -398,9 +428,11 @@
                         };
                     });
                 } catch (error) {
-                    console.error('署名または公開に失敗しました:', error);
-                    alert('保存に失敗しました。');
+                    console.error('JSONの解析、署名、または公開に失敗しました:', error);
+                    alert('JSONの形式が正しくないか、保存に失敗しました。');
                 }
             });
         });
     </script>
+</body>
+</html>
