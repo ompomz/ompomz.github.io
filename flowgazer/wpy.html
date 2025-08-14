@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
  <meta charset="UTF-8">
- <title>Nostr kind:30000 Event Manager</title>
+ <title>want peek you</title>
  <style>
  body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px; line-height: 1.6; }
  h4, h5 { color: #333; }
@@ -17,20 +17,18 @@
  </style>
 </head>
 <body>
+ <h4>want peek you -Nostr kind:30000 editor-</h4>
 
- <h4>Nostr kind:30000 Event Manager</h4>
-
- <div id="loader" style="display:none; text-align:center;">
- <p>処理中...</p>
- </div>
+ <div id="loader" style="display:none; text-align:center;"><p>処理中</p></div>
+ <h5>ログ</h5><div id="log"></div>
 
  <label for="npubInput">npubを入力:</label>
  <input type="text" id="npubInput" placeholder="npub1..." value="">
- <button onclick="fetchEvents()">イベントを取得</button>
+ <button onclick="fetchEvents()">リストを取得</button>
  
  <label for="dTagSelect">編集するリストを選択:</label>
  <select id="dTagSelect" disabled>
- <option value="">dタグを選択してください</option>
+ <option value="">リスト名</option>
  </select>
  
  <label for="nsecInput">nsecを入力:</label>
@@ -39,11 +37,11 @@
 
  <div class="flex-container">
  <div class="flex-item">
- <label for="contentInput">① 暗号化する公開鍵 (content):</label>
+ <label for="contentInput">① 暗号化する公開鍵（private）:</label>
  <textarea id="contentInput" rows="5" placeholder="公開鍵をhex形式で入力 (改行、カンマ、スペース区切り)"></textarea>
  </div>
  <div class="flex-item">
- <label for="pTagsInput">② pタグに含める公開鍵:</label>
+ <label for="pTagsInput">② pタグに含める公開鍵（public）:</label>
  <textarea id="pTagsInput" rows="5" placeholder="公開鍵をhex形式で入力 (改行、カンマ、スペース区切り)"></textarea>
  </div>
  </div>
@@ -52,10 +50,7 @@
  <h5>生成されたJSON</h5>
  <pre id="generatedJson" style="min-height: 100px;"></pre>
  <button onclick="updateEvent()" id="updateButton" disabled>更新</button>
-
- <h5>ログ</h5>
- <div id="log"></div>
-
+ 
  <script src="https://cdn.jsdelivr.net/npm/nostr-tools@2.16.0/lib/nostr.bundle.js"></script>
  <script>
  const { getPublicKey, nip19, finalizeEvent, nip04 } = window.NostrTools;
@@ -121,43 +116,48 @@
  const events = [];
 
  socket.onopen = () => {
- log('WebSocket接続成功');
- const subscriptionId = "kind30000_sub";
- const filter = { kinds: [30000], authors: [pubkey] };
- socket.send(JSON.stringify(["REQ", subscriptionId, filter]));
+  log('WebSocket接続成功');
+  const subscriptionId = "kind30000_sub";
+  const filter = { kinds: [30000], authors: [pubkey] };
+  socket.send(JSON.stringify(["REQ", subscriptionId, filter]));
  };
 
  socket.onmessage = (event) => {
- const data = JSON.parse(event.data);
- if (data[0] === "EVENT") {
- events.push(data[2]);
- }
- if (data[0] === "EOSE") {
- socket.close();
- log('イベント取得完了。WebSocketを閉じます。');
- if (events.length === 0) {
- log('kind:30000のイベントが見つかりませんでした。', 'error');
- } else {
- events.forEach(event => {
- const dTag = event.tags.find(tag => tag[0] === 'd');
- if (dTag) {
- const option = document.createElement('option');
- option.value = JSON.stringify(event);
- option.textContent = dTag[1];
- dTagSelect.appendChild(option);
- }
- });
- dTagSelect.disabled = false;
- decryptButton.disabled = false;
- log(`${events.length}件のイベントを取得しました。`);
- }
- hideLoader();
- }
+  const data = JSON.parse(event.data);
+  if (data[0] === "EVENT") {
+  events.push(data[2]);
+  }
+  if (data[0] === "EOSE") {
+  socket.close();
+  log('イベント取得完了。WebSocketを閉じます。');
+  if (events.length === 0) {
+  log('kind:30000のイベントが見つかりませんでした。', 'error');
+  } else {
+  events.forEach(event => {
+  const dTag = event.tags.find(tag => tag[0] === 'd');
+  if (dTag) {
+   const option = document.createElement('option');
+   option.value = JSON.stringify(event);
+   option.textContent = dTag[1];
+   dTagSelect.appendChild(option);
+  }
+  });
+  dTagSelect.disabled = false;
+  decryptButton.disabled = false;
+  log(`${events.length}件のイベントを取得しました。`);
+  }
+  hideLoader();
+  }
  };
 
  socket.onerror = (err) => {
- log('WebSocketエラー: ' + err, 'error');
- hideLoader();
+  log('WebSocketエラー: ' + err.message, 'error');
+  hideLoader();
+ };
+
+ socket.onclose = () => {
+  log('WebSocket接続を閉じました。');
+  hideLoader();
  };
  } catch (error) {
  log('イベント取得中にエラーが発生しました: ' + error.message, 'error');
@@ -171,17 +171,17 @@
  try {
  const selectedEventJson = dTagSelect.value;
  if (!selectedEventJson) {
- log('イベントを選択してください。', 'error');
- hideLoader();
- return;
+  log('イベントを選択してください。', 'error');
+  hideLoader();
+  return;
  }
  currentEvent = JSON.parse(selectedEventJson);
  
  const nsec = nsecInput.value;
  if (!nsec) {
- log('nsecを入力してください。', 'error');
- hideLoader();
- return;
+  log('nsecを入力してください。', 'error');
+  hideLoader();
+  return;
  }
  const { data: privkey } = nip19.decode(nsec);
  userNsec = privkey;
@@ -189,27 +189,26 @@
 
  const pubkeyFromEvent = currentEvent.pubkey;
  if (userPubkey !== pubkeyFromEvent) {
- log('入力されたnsecは、このイベントの公開鍵と一致しません。', 'error');
- hideLoader();
- return;
+  log('入力されたnsecは、このイベントの公開鍵と一致しません。', 'error');
+  hideLoader();
+  return;
  }
 
  originalPubkeysFromPtag = currentEvent.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]);
  originalDtag = currentEvent.tags.find(tag => tag[0] === 'd')[1];
 
  if (originalPubkeysFromPtag.length === 0) {
- log('pタグが見つからないため復号できません。', 'error');
- hideLoader();
- return;
+  log('pタグが見つからないため復号できません。', 'error');
+  hideLoader();
+  return;
  }
  
  const pubkeyForDecryption = originalPubkeysFromPtag[0];
- const decryptedContentString = await nip04.decrypt(privkey, pubkeyForDecryption, currentEvent.content);
+ const decryptedContent = await nip04.decrypt(privkey, pubkeyForDecryption, currentEvent.content);
  
- // 復号した文字列を改行区切りで配列に戻す
- const decryptedPubkeysArray = decryptedContentString.split('\n');
- 
- contentInput.value = decryptedPubkeysArray.join('\n');
+ // 修正箇所: 復号したコンテンツをそのまま表示
+ contentInput.value = decryptedContent;
+
  pTagsInput.value = originalPubkeysFromPtag.join('\n');
  
  log('イベントを正常に復号しました。');
@@ -225,31 +224,32 @@
  showLoader();
  try {
  if (!userNsec || !userPubkey) {
- log('まずイベントを復号してください。', 'error');
- hideLoader();
- return;
+  log('まずイベントを復号してください。', 'error');
+  hideLoader();
+  return;
  }
 
  const newContentPubkeys = parsePubkeys(contentInput.value);
  const newPTagsPubkeys = parsePubkeys(pTagsInput.value);
 
  if (newContentPubkeys.length === 0 || newPTagsPubkeys.length === 0) {
- log('contentまたはpタグに含める公開鍵を入力してください。', 'error');
- hideLoader();
- return;
+  log('contentまたはpタグに含める公開鍵を入力してください。', 'error');
+  hideLoader();
+  return;
  }
 
- // nip04.encryptは新しいnostr-toolsでは async functionに
- const encryptedContent = await nip04.encrypt(userNsec, newPTagsPubkeys[0], newContentPubkeys.join('\n'));
+ // 修正箇所: 暗号化する前に、コンテンツの書式を `[["p", "pubkey"]]` の形式に整える
+ const contentTags = newContentPubkeys.map(pubkey => ["p", pubkey]);
+ const encryptedContent = await nip04.encrypt(userNsec, newPTagsPubkeys[0], JSON.stringify(contentTags));
 
  const event = {
- kind: 30000,
- created_at: Math.floor(Date.now() / 1000),
- tags: [
- ['d', originalDtag],
- ...newPTagsPubkeys.map(pubkey => ['p', pubkey]),
- ],
- content: encryptedContent,
+  kind: 30000,
+  created_at: Math.floor(Date.now() / 1000),
+  tags: [
+  ['d', originalDtag],
+  ...newPTagsPubkeys.map(pubkey => ['p', pubkey]),
+  ],
+  content: encryptedContent,
  };
  
  const signedEvent = finalizeEvent(event, userNsec);
@@ -270,26 +270,26 @@
  const socket = new WebSocket(relayUrl);
 
  socket.onopen = () => {
- log('イベント公開のためのWebSocket接続成功');
- socket.send(JSON.stringify(["EVENT", event]));
+  log('イベント公開のためのWebSocket接続成功');
+  socket.send(JSON.stringify(["EVENT", event]));
  };
 
  socket.onmessage = (msg) => {
- const data = JSON.parse(msg.data);
- if (data[0] === "OK") {
- if (data[2]) {
- log('イベントは正常に公開されました！', 'success');
- } else {
- log('イベントの公開に失敗しました: ' + data[3], 'error');
- }
- socket.close();
- }
+  const data = JSON.parse(msg.data);
+  if (data[0] === "OK") {
+  if (data[2]) {
+  log('イベントは正常に公開されました！', 'success');
+  } else {
+  log('イベントの公開に失敗しました: ' + data[3], 'error');
+  }
+  socket.close();
+  }
  };
 
  socket.onerror = (err) => {
- log('イベント公開時のWebSocketエラー: ' + err, 'error');
- socket.close();
- hideLoader();
+  log('イベント公開時のWebSocketエラー: ' + err.message, 'error');
+  socket.close();
+  hideLoader();
  };
  
  } catch (error) {
