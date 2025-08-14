@@ -1,93 +1,124 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
- <meta charset="UTF-8">
- <title>want peek you</title>
- <style>
-  /* リセットと基本スタイル */
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  max-width: 800px;
-  margin: auto;
-  padding: 10px;
-  line-height: 1.3;
-  background-color: #f7f7f7;
-  color: #333;
-}
+<meta charset="UTF-8">
+<title>want peek you</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    max-width: 800px;
+    margin: auto;
+    padding: 10px;
+    line-height: 1.3;
+    background-color: #f7f7f7;
+    color: #333;
+  }
 
-h4, h5 {
-  color: #555;
-  margin-bottom: .5rem;
-}
+  h4, h5 {
+    color: #555;
+    margin-bottom: .5rem;
+  }
 
-  label {
-  display: block;
-  margin-top: .5rem;
-  font-size: .9rem;
-  color: #666;
-}
+  label {
+    display: block;
+    margin-top: .5rem;
+    font-size: .9rem;
+    color: #666;
+  }
 
-input[type="text"], textarea, select {
-  width: 100%;
-  padding: 6px;
-  margin-top: 2px;
-  margin-bottom: 4px;
-  box-sizing: border-box;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background-color: #fff;
-}
+  input[type="text"], textarea, select {
+    width: 100%;
+    padding: 6px;
+    margin-top: 2px;
+    margin-bottom: 4px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+  }
 
-button {
-  padding: 6px 12px;
-  margin-top: 8px;
-  cursor: pointer;
-  background-color: #ffb366; /* オレンジ色に統一 */
-  color: white;
-  border: none;
-  border-radius: 20px; /* ボタンの形を元のCSSに合わせる */
-  font-weight: bold;
-  transition: background-color .2s;
-}
+  /* ボタンの共通スタイル */
+  button {
+    padding: 6px 12px;
+    margin-top: .5rem;
+    cursor: pointer;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-weight: bold;
+    transition: background-color .2s;
+  }
 
-button:hover {
-  background-color: #ffa347;
-}
+  /* ボタン個別スタイル */
+  #fetchEvents {
+    background-color: #66b3ff; /* 青色 */
+  }
 
-.flex-container {
-  display: flex;
-  gap: 10px;
-}
+  #fetchEvents:hover {
+    background-color: #4da6ff;
+  }
 
-.flex-item {
-  flex: 1;
-}
+  #decryptButton {
+    background-color: #ff99cc; /* ピンク色 */
+  }
 
-pre {
-  background-color: #fff;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
+  #decryptButton:hover {
+    background-color: #ff66b2;
+  }
 
-#log {
-  margin-top: 1rem;
-  padding: 10px;
-  background-color: #f0f0f0;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  height: 5rem;
-  overflow-y: scroll;
-}
-</style> 
+  #generateButton {
+    background-color: #ffd700; /* 黄色 */
+  }
+
+  #generateButton:hover {
+    background-color: #ffc400;
+  }
+
+  #updateButton {
+    background-color: #ffb366; /* オレンジ色 */
+  }
+
+  #updateButton:hover {
+    background-color: #ffa347;
+  }
+
+  .flex-container {
+    display: flex;
+    gap: 10px;
+  }
+
+  .flex-item {
+    flex: 1;
+  }
+
+  pre {
+    background-color: #fff;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  
+  #log {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 20rem;
+    height: 4rem;
+    z-index: 1000;
+    padding: 5px;
+    background-color: #f0f0f0;
+    border-radius: 8px;
+    overflow-y: scroll;
+  }
+  </style>
 </head>
 <body>
  <h4>want peek you</h4><span style="color: gray;">-Nostr kind:30000 List editor-</span>
 
  <div id="loader" style="display:none; text-align:center;"><p>処理中</p></div>
- <h5>ログ</h5><div id="log"></div>
+ <div id="log"></div>
 
  <label for="npubInput">npubを入力:</label>
  <input type="text" id="npubInput" placeholder="npub1..." value="">
