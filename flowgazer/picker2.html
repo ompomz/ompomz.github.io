@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>kind:0 & kind:3 picker</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; line-height: 1.6; }
+        .container { max-width: 800px; margin: auto; }
+        .form-section { margin-bottom: 2em; padding: 1em; border: 1px solid #ccc; border-radius: 8px; }
+        label { display: block; margin-bottom: 0.5em; font-weight: bold; }
+        input[type="text"], textarea { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; margin-top: 0.5em; }
+        button { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 1em; }
+        button:hover { background-color: #0056b3; }
+        .status-message { margin-top: 1em; padding: 0.5em; border-radius: 4px; }
+        .error-message { color: #dc3545; background-color: #f8d7da; border: 1px solid #f5c6cb; }
+        .success-message { color: #28a745; background-color: #d4edda; border: 1px solid #c3e6cb; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+        th, td { padding: 8px; border: 1px solid #ccc; text-align: left; word-break: break-all; }
+        .button-group { display: flex; gap: 10px; margin-top: 1em; }
+        .copy-group { display: flex; align-items: stretch; margin-top: 1em; }
+        .copy-group textarea { flex-grow: 1; margin-right: 10px; margin-top: 0; }
+        .copy-group button { margin-top: 0; align-self: flex-end; }
+        h1, h2 { color: #333; }
+        hr { margin: 2em 0; border: 0; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    <h1>kind:0 & kind:3 picker</h1>
+    <p>公開鍵（hex形式またはnpub1形式）を入力して、プロフィール情報やフォローリストを取得します。</p>
+    <div class="container">
+        <div class="form-section">
+            <label for="relay-url-input">リレーURL:</label>
+            <input type="text" id="relay-url-input" value="wss://r.kojira.io" placeholder="例: wss://relay.damus.io">
+        </div>
+      <div class="form-section">
+            <h2>フォローリスト取得 (kind:3)</h2>
+            <div class="input-group">
+                <input type="text" id="follows-pubkey-input" placeholder="kind:3を取得する公開鍵 (hexまたはnpub1)">
+                <button id="fetch-follows-button">kind:3を取得</button>
+            </div>
+            <p id="follows-status-message" class="status-message">公開鍵を入力して、フォローリストを取得してください。</p>
+      </div>
+      <div id="extracted-follows-container" style="display: none;">
+            <label for="extracted-follows">抽出されたフォロー公開鍵 (カンマ区切り):</label>
+            <div class="copy-group">
+                <textarea id="extracted-follows" rows="5" readonly></textarea>
+                <button id="copy-follows-button">コピー</button>
+            </div>
+        </div>        
+        <div class="form-section">
+            <h2>プロフィール取得 (kind:0)</h2>
+            <label for="pubkey-textarea">公開鍵 (hexまたはnpub1) :</label>
+            <textarea id="pubkey-textarea" rows="5" placeholder="例：
+2c57500d075ff64757c3e595305141e9882c8172c918349477b63f7041793740
+npub1g5x3j9q694a504c5e3f52a7c4149e9882c8172c918349477b63f7041793740"></textarea>
+            <button id="fetch-button">プロフィールを取得</button>
+            <p id="status-message" class="status-message">ボタンを押して開始してください。</p>
+            <div id="missing-pubkeys" class="error-message" style="display:none;"></div>
+        </div>        
+        <div id="extraction-tools" style="display: none;">
+            <hr>
+            <h2>抽出ツール</h2>
+            <div class="button-group">
+                <button id="check-all-button">全部チェック</button>
+                <button id="uncheck-all-button">全部はずす</button>
+                <button id="extract-button">抽出</button>
+            </div>
+            <div id="extracted-hexes-container" style="display: none;">
+                <label for="extracted-hexes">抽出されたhex値 (カンマ区切り):</label>
+                <div class="copy-group">
+                    <textarea id="extracted-hexes" rows="5" readonly></textarea>
+                    <button id="copy-hexes-button">コピー</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="results-section" style="display: none;">
+            <hr>
+            <h2>取得結果</h2>
+            <table id="profile-table">
+                <thead>
+                    <tr>
+                        <th>hex</th>
+                        <th>name</th>
+                        <th>選択</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@noble/curves@1.0.0/secp256k1.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@noble/hashes@1.3.0/sha256.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@scure/base@1.1.1/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@scure/base@1.1.1/base58.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@scure/base@1.1.1/bech32.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/nostr-tools@2.1.2/lib/nostr.bundle.min.js"></script>
+    <script>
+        const { bech32 } = window.NostrTools.nip19;
+        const pubkeyTextarea = document.getElementById('pubkey-textarea');
+        const fetchButton = document.getElementById('fetch-button');
+        const profileTableBody = document.querySelector('#profile-table tbody');
+        const statusMessage = document.getElementById('status-message');
+        const missingPubkeysDiv = document.getElementById('missing-pubkeys');
+        const checkAllButton = document.getElementById('check-all-button');
+        const uncheckAllButton = document.getElementById('uncheck-all-button');
+        const extractButton = document.getElementById('extract-button');
+        const extractedHexesContainer = document.getElementById('extracted-hexes-container');
+        const extractedHexesTextarea = document.getElementById('extracted-hexes');
+        const resultsSection = document.getElementById('results-section');
+        const extractionTools = document.getElementById('extraction-tools');
+        const copyHexesButton = document.getElementById('copy-hexes-button');
+        const relayUrlInput = document.getElementById('relay-url-input');
+
+        const followsPubkeyInput = document.getElementById('follows-pubkey-input');
+        const fetchFollowsButton = document.getElementById('fetch-follows-button');
+        const followsStatusMessage = document.getElementById('follows-status-message');
+        const extractedFollowsContainer = document.getElementById('extracted-follows-container');
+        const extractedFollowsTextarea = document.getElementById('extracted-follows');
+        const copyFollowsButton = document.getElementById('copy-follows-button');
+
+        fetchButton.addEventListener('click', fetchProfiles);
+        checkAllButton.addEventListener('click', () => toggleAllCheckboxes(true));
+        uncheckAllButton.addEventListener('click', () => toggleAllCheckboxes(false));
+        extractButton.addEventListener('click', extractCheckedHexes);
+        copyHexesButton.addEventListener('click', () => copyToClipboard(extractedHexesTextarea));
+
+        fetchFollowsButton.addEventListener('click', fetchFollows);
+        copyFollowsButton.addEventListener('click', () => copyToClipboard(extractedFollowsTextarea));
+
+        function isValidHex(str) {
+            return /^[a-f0-9]{64}$/.test(str);
+        }
+
+        function normalizePubkeys(inputString) {
+            const allInputs = inputString.split(/[\s,]+/).filter(pk => pk.trim() !== '');
+            const validHexes = new Set();
+            const invalidPubkeys = new Set();
+        
+            allInputs.forEach(input => {
+                if (isValidHex(input)) {
+                    validHexes.add(input);
+                } else if (input.startsWith('npub1')) {
+                    try {
+                        const { type, data } = NostrTools.nip19.decode(input);
+                        if (type === 'npub') {
+                            validHexes.add(data);
+                        } else {
+                            invalidPubkeys.add(input);
+                        }
+                    } catch (e) {
+                        invalidPubkeys.add(input);
+                    }
+                } else {
+                    invalidPubkeys.add(input);
+                }
+            });
+            return {
+                validPubkeys: Array.from(validHexes),
+                invalidPubkeys: Array.from(invalidPubkeys)
+            };
+        }
+
+        function fetchProfiles() {
+            const relayUrl = relayUrlInput.value.trim();
+            const { validPubkeys, invalidPubkeys } = normalizePubkeys(pubkeyTextarea.value);
+
+            if (invalidPubkeys.length > 0) {
+                missingPubkeysDiv.textContent = `以下の公開鍵は無効な形式です: ${invalidPubkeys.join(', ')}`;
+                missingPubkeysDiv.style.display = 'block';
+                statusMessage.textContent = '無効な公開鍵があります。';
+                statusMessage.classList.add('error-message');
+                return;
+            } else {
+                missingPubkeysDiv.style.display = 'none';
+            }
+
+            if (validPubkeys.length === 0) {
+                statusMessage.textContent = '有効な公開鍵を入力してください。';
+                statusMessage.classList.add('error-message');
+                return;
+            }
+
+            statusMessage.textContent = `プロフィールの取得を開始しました... (リレー: ${relayUrl})`;
+            statusMessage.classList.remove('error-message', 'success-message');
+            profileTableBody.innerHTML = '';
+            resultsSection.style.display = 'none';
+            extractionTools.style.display = 'none';
+            extractedHexesContainer.style.display = 'none';
+            extractedHexesTextarea.value = '';
+
+            const fetchedPubkeys = new Set();
+            const ws = new WebSocket(relayUrl);
+
+            ws.onopen = () => {
+                console.log('WebSocket connected to', relayUrl);
+                const filter = {
+                    kinds: [0],
+                    authors: validPubkeys
+                };
+                ws.send(JSON.stringify(['REQ', 'profile-fetch', filter]));
+            };
+
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                const [type, subId, eventData] = message;
+
+                if (type === 'EVENT' && eventData.kind === 0) {
+                    try {
+                        const profile = JSON.parse(eventData.content);
+                        const name = profile.name || eventData.pubkey.substring(0, 8) + '...';
+                        const hex = eventData.pubkey;
+                        
+                        if (!fetchedPubkeys.has(hex)) {
+                            const tableRow = document.createElement('tr');
+                            tableRow.innerHTML = `
+                                <td>${hex}</td>
+                                <td>${name}</td>
+                                <td><input type="checkbox" class="profile-checkbox" data-hex="${hex}"></td>
+                            `;
+                            profileTableBody.appendChild(tableRow);
+                            fetchedPubkeys.add(hex);
+                        }
+
+                        resultsSection.style.display = 'block';
+                        extractionTools.style.display = 'block';
+
+                    } catch (e) {
+                        console.error('Failed to parse kind 0 content:', e);
+                    }
+                } else if (type === 'EOSE') {
+                    const unfetchedPubkeys = validPubkeys.filter(pk => !fetchedPubkeys.has(pk));
+                    
+                    if (unfetchedPubkeys.length > 0) {
+                        missingPubkeysDiv.textContent = `以下のプロフィールは取得できませんでした: ${unfetchedPubkeys.join(', ')}`;
+                        missingPubkeysDiv.style.display = 'block';
+                        statusMessage.textContent = `プロフィールの取得が完了しましたが、一部の鍵は取得できませんでした。`;
+                        statusMessage.classList.add('error-message');
+                    } else {
+                        statusMessage.textContent = 'プロフィールの取得が完了しました。';
+                        statusMessage.classList.add('success-message');
+                        missingPubkeysDiv.style.display = 'none';
+                    }
+                    ws.close();
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket connection closed.');
+            };
+
+            ws.onerror = (error) => {
+                statusMessage.textContent = `エラーが発生しました。コンソールを確認してください。`;
+                statusMessage.classList.add('error-message');
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        function toggleAllCheckboxes(checked) {
+            const checkboxes = document.querySelectorAll('.profile-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = checked;
+            });
+        }
+
+        function extractCheckedHexes() {
+            const checkboxes = document.querySelectorAll('.profile-checkbox:checked');
+            const checkedHexes = Array.from(checkboxes).map(cb => cb.dataset.hex);
+            extractedHexesTextarea.value = checkedHexes.join(',');
+            extractedHexesContainer.style.display = 'block';
+        }
+
+        function fetchFollows() {
+            const relayUrl = relayUrlInput.value.trim();
+            const { validPubkeys, invalidPubkeys } = normalizePubkeys(followsPubkeyInput.value);
+
+            if (invalidPubkeys.length > 0 || validPubkeys.length !== 1) {
+                followsStatusMessage.textContent = '有効な公開鍵を1つだけ入力してください。';
+                followsStatusMessage.classList.add('error-message');
+                return;
+            }
+            const pubkey = validPubkeys[0];
+
+            followsStatusMessage.textContent = `フォローリストの取得を開始しました... (リレー: ${relayUrl})`;
+            followsStatusMessage.classList.remove('error-message', 'success-message');
+            extractedFollowsContainer.style.display = 'none';
+            extractedFollowsTextarea.value = '';
+
+            const ws = new WebSocket(relayUrl);
+
+            ws.onopen = () => {
+                console.log('WebSocket connected to', relayUrl);
+                const filter = {
+                    kinds: [3],
+                    authors: [pubkey],
+                    limit: 1,
+                };
+                ws.send(JSON.stringify(['REQ', 'follows-fetch', filter]));
+            };
+
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                const [type, subId, eventData] = message;
+
+                if (type === 'EVENT' && eventData.kind === 3) {
+                    try {
+                        const followsPubkeys = eventData.tags
+                            .filter(tag => tag[0] === 'p')
+                            .map(tag => tag[1]);
+
+                        extractedFollowsTextarea.value = followsPubkeys.join(',');
+                        extractedFollowsContainer.style.display = 'block';
+                        followsStatusMessage.textContent = 'フォローリストの取得が完了しました。';
+                        followsStatusMessage.classList.add('success-message');
+
+                    } catch (e) {
+                        console.error('Failed to process kind 3 event:', e);
+                        followsStatusMessage.textContent = 'kind:3イベントの処理中にエラーが発生しました。';
+                        followsStatusMessage.classList.add('error-message');
+                    }
+                } else if (type === 'EOSE') {
+                    if (extractedFollowsTextarea.value === '') {
+                        followsStatusMessage.textContent = '指定された公開鍵のkind:3イベントは見つかりませんでした。';
+                        followsStatusMessage.classList.add('error-message');
+                    }
+                    ws.close();
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket connection closed.');
+            };
+
+            ws.onerror = (error) => {
+                followsStatusMessage.textContent = `エラーが発生しました。コンソールを確認してください。`;
+                followsStatusMessage.classList.add('error-message');
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        function copyToClipboard(textareaElement) {
+            textareaElement.select();
+            textareaElement.setSelectionRange(0, 99999);
+            try {
+                navigator.clipboard.writeText(textareaElement.value);
+                alert('クリップボードにコピーしました！');
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                alert('コピーに失敗しました。');
+            }
+        }
+    </script>
+</body>
+</html>
