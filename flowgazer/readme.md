@@ -1,17 +1,12 @@
 * https://ompomz.github.io/flowgazer/
-
-  flowgazer -kindness edition-  
+* flowgazer -kindness edition-
 * https://ompomz.github.io/flowgazer/index2.html
-
-	flowgazer  
+* flowgazer
 * https://ompomz.github.io/flowgazer/index3.html
-
-	Nostrってなに？  
+* Nostrってなに？
 * https://ompomz.github.io/flowgazer/jfm.html
-
-	flowgazer just for me  
-* https://ompomz.github.io/flowgazer/picker.html
-
+* flowgazer just for me
+* https://ompomz.github.io/flowgazer/hpp.html
+* hex pubkey picker
 * https://ompomz.github.io/flowgazer/wpy.html
-
 * https://ompomz.github.io/flowgazer/wpyjfm.html
