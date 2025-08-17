@@ -173,7 +173,7 @@ button {
     flex: 1; /* ボタンの幅を均等に広げる */
     text-align: center;
     border: none;
-    background-color: #FFC840;
+    background-color: #ffe0b2;
     color: white;
     text-decoration: none;
     font-size: 0.9rem;
@@ -185,7 +185,7 @@ button {
 }
 
 .post-button:hover {
-    background-color: #FFC400;
+    background-color: #ffcc80;
 }
 
 /* 投稿ボタンの `button` タグに適用するスタイル */
