@@ -209,7 +209,7 @@ button#load-more:hover {
 /* 詳細設定エリア */
 #settings-toggle-area {
     text-align: center;
-    margin:0px 0px 0px 0px;
+    margin:2px 0px 4px 0px;
 }
 
 #show-settings,
