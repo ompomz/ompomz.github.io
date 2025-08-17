@@ -76,9 +76,17 @@ npub: window.NostrTools.nip19.npubEncode(pubkey)
 </div>
 
 <div id="advanced-settings" class="hidden">
-<div id="relay-url-container">
-<label for="relay-url">リレーURL</label>
-<input id="relay-url" type="text" class="full-width">
+    <div id="relay-url-container">
+        <label for="relay-url">リレーURL</label>
+        <input list="relay-suggestions" id="relay-url" type="text" class="full-width" placeholder="例: wss://relay.damus.io">
+        <datalist id="relay-suggestions">
+            <option value="wss://r.kojira.io/">
+            <option value="wss://yabu.me/">
+            <option value="wss://relay-jp.nostr.wirednet.jp/">
+            <option value="wss://relay.damus.io">
+            <option value="wss://nos.lol">
+            <option value="wss://relay.nostr.band">
+            </datalist>
 <button id="subscribe-relay">接続</button>
 </div>
 <label for="hex-filter">投稿者pubkeyしぼりこみ（hex, npub, nprofile）</label>
@@ -94,6 +102,19 @@ npub: window.NostrTools.nip19.npubEncode(pubkey)
 <button type="button" id="load-more" class="loading full-width">もっと見る
 </button>
     <script>
+    document.addEventListener('DOMContentLoaded', function() {
+    // IDが 'relay-url' の要素を取得
+    const relayUrlInput = document.getElementById('relay-url');
+    
+    // 初期値を設定
+    // ここに設定したいリレーURLを入力してください
+    const defaultRelayUrl = 'wss://r.kojira.io/';
+    
+    // 取得した要素のvalueプロパティに初期値を代入
+    if (relayUrlInput) { // 要素が存在するか確認
+        relayUrlInput.value = defaultRelayUrl;
+    }
+        });
     // ページの読み込み時に初期状態を設定する
     window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('hide-settings').classList.add('hidden');
