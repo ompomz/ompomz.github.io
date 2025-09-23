@@ -285,100 +285,108 @@ async function renderMainEvent(event) {
 }
 
 function renderReactions(reactions, customEmojiMap) {
-  console.log(`リアクションのレンダリングを開始: ${reactions.length}件`);
-  const reactionGroups = new Map();
+    console.log(`リアクションのレンダリングを開始: ${reactions.length}件`);
+    const reactionGroups = new Map();
+    reactions.forEach(reaction => {
+        const emoji = reaction.content.trim();
+        if (!reactionGroups.has(emoji)) {
+            reactionGroups.set(emoji, { count: 0, pubkeys: new Set() });
+        }
+        const group = reactionGroups.get(emoji);
+        group.count++;
+        group.pubkeys.add(reaction.pubkey);
+    });
 
-  reactions.forEach(reaction => {
-    const emoji = reaction.content.trim();
-    if (!reactionGroups.has(emoji)) {
-      reactionGroups.set(emoji, {
-        count: 0,
-        pubkeys: new Set()
-      });
+    reactionsList.innerHTML = '';
+    
+    for (const [emoji, group] of reactionGroups.entries()) {
+        const avatarsHtml = Array.from(group.pubkeys).map(pubkey => {
+            const profile = userProfiles[pubkey] || {};
+            const profilePicture = (profile.picture && profile.picture.trim() !== '') ? profile.picture : DEFAULT_PROFILE_IMAGE;
+            const npub = window.NostrTools.nip19.npubEncode(pubkey);
+            const profileUrl = `?id=${npub}`;
+            return `<a href="${profileUrl}"><img src="${profilePicture}" class="reaction-avatar" alt="reaction user avatar"></a>`;
+        }).join('');
+
+        let displayedEmojiHtml;
+        const emojiUrl = customEmojiMap.get(emoji);
+        
+        // 絵文字にコロンが付いているか確認
+        if (emoji.startsWith(':') && emoji.endsWith(':')) {
+             const cleanedEmoji = emoji.slice(1, -1);
+             const urlFromMap = customEmojiMap.get(emoji);
+             if (urlFromMap) {
+                 displayedEmojiHtml = `<img src="${urlFromMap}" alt="${cleanedEmoji}" class="reaction-custom-emoji custom-emoji-hover">`;
+             } else {
+                 // マップにない場合は、元々のテキストを表示
+                 displayedEmojiHtml = `<span class="reaction-emoji">${emoji}</span>`;
+             }
+        } else {
+            // カスタム絵文字ではない場合
+            const urlFromMap = customEmojiMap.get(emoji);
+            if (urlFromMap) {
+                 displayedEmojiHtml = `<img src="${urlFromMap}" alt="${emoji}" class="reaction-custom-emoji custom-emoji-hover">`;
+            } else {
+                 const displayedEmoji = emoji === '+' ? '' : emoji;
+                 displayedEmojiHtml = `<span class="reaction-emoji">${displayedEmoji}</span>`;
+            }
+        }
+
+        const groupHtml = `
+            <div class="reaction-group">
+                ${displayedEmojiHtml}
+                <div class="reaction-avatars">${avatarsHtml}</div>
+            </div>
+        `;
+        reactionsList.innerHTML += groupHtml;
     }
-    const group = reactionGroups.get(emoji);
-    group.count++;
-    group.pubkeys.add(reaction.pubkey);
-  });
 
-  reactionsList.innerHTML = '';
-
-  for (const [emoji, group] of reactionGroups.entries()) {
-    const avatarsHtml = Array.from(group.pubkeys).map(pubkey => {
-      const profile = userProfiles[pubkey] || {};
-      const profilePicture = (profile.picture && profile.picture.trim() !== '') ? profile.picture : DEFAULT_PROFILE_IMAGE;
-      const npub = window.NostrTools.nip19.npubEncode(pubkey);
-      const profileUrl = `?id=${npub}`;
-      return `<a href="${profileUrl}"><img src="${profilePicture}" class="reaction-avatar" alt="reaction user avatar"></a>`;
-    }).join('');
-
-    let displayedEmojiHtml;
-    const emojiUrl = customEmojiMap.get(emoji);
-    if (emojiUrl && emojiUrl.trim() !== '') {
-      displayedEmojiHtml = `<img src="${emojiUrl}" alt="${emoji}" class="reaction-custom-emoji custom-emoji-hover">`;
-    } else {
-      const displayedEmoji = emoji === '+' ? '' : emoji;
-      displayedEmojiHtml = `<span class="reaction-emoji">${displayedEmoji}</span>`;
-    }
-
-    const groupHtml = `
-      <div class="reaction-group">
-        ${displayedEmojiHtml}
-        <div class="reaction-avatars">${avatarsHtml}</div>
-      </div>
-    `;
-    reactionsList.innerHTML += groupHtml;
-  }
-
-  reactionsSection.style.display = 'block';
-  console.log('リアクションのレンダリングが完了しました');
+    reactionsSection.style.display = 'block';
+    console.log('リアクションのレンダリングが完了しました');
 }
 
-function renderRelatedEvents(posts, reposts, quotes) {
-  console.log(`関連イベントのレンダリングを開始: 投稿(${posts.length}), リポスト(${reposts.length}), 引用(${quotes.length})`);
-  const allRelatedEvents = [...posts, ...reposts, ...quotes];
-  allRelatedEvents.sort((a, b) => b.created_at - a.created_at);
+async function renderRelatedEvents(posts, reposts, quotes) {
+    console.log(`関連イベントのレンダリングを開始: 投稿(${posts.length}), リポスト(${reposts.length}), 引用(${quotes.length})`);
+    const allRelatedEvents = [...posts, ...reposts, ...quotes];
+    allRelatedEvents.sort((a, b) => b.created_at - a.created_at);
+    relatedEventsList.innerHTML = '';
+    
+    for (const event of allRelatedEvents) {
+        const date = new Date(event.created_at * 1000).toLocaleString();
+        let postContentHtml = '';
+        let postTypeLabel = '';
+        
+        switch (event.kind) {
+            case 1:
+                postTypeLabel = 'リプライ';
+                postContentHtml = `<div class="post-content">${await formatPostContent(event.content, event.tags)}</div>`;
+                break;
+            case 6:
+                postTypeLabel = 'リポスト';
+                const repostUser = userProfiles[event.pubkey] || { name: 'Unknown' };
+                postContentHtml = `<div class="post-content">${escapeHtml(repostUser.name)}さんがリポストしました</div>`;
+                break;
+            case 16:
+                postTypeLabel = '引用';
+                postContentHtml = `<div class="post-content">${await formatPostContent(event.content, event.tags)}</div>`;
+                break;
+        }
 
-  relatedEventsList.innerHTML = '';
-
-  allRelatedEvents.forEach(async event => {
-    const date = new Date(event.created_at * 1000).toLocaleString();
-    let postContentHtml = '';
-    let postTypeLabel = '';
-
-    switch (event.kind) {
-      case 1:
-        postTypeLabel = 'リプライ';
-        postContentHtml = `<div class="post-content">${await formatPostContent(event.content, event.tags)}</div>`;
-        break;
-      case 6:
-        postTypeLabel = 'リポスト';
-        const repostUser = userProfiles[event.pubkey] || {
-          name: 'Unknown'
-        };
-        postContentHtml = `<div class="post-content">${escapeHtml(repostUser.name)}さんがリポストしました</div>`;
-        break;
-      case 16:
-        postTypeLabel = '引用';
-        postContentHtml = `<div class="post-content">${await formatPostContent(event.content, event.tags)}</div>`;
-        break;
+        const html = `
+            <div class="related-post-card">
+                ${createProfileHtml(event.pubkey)}
+                <div class="post-info">
+                    <span>${date}</span>
+                    <span>${postTypeLabel}</span>
+                </div>
+                ${postContentHtml}
+            </div>
+        `;
+        relatedEventsList.innerHTML += html;
     }
-
-    const html = `
-      <div class="related-post-card">
-        ${createProfileHtml(event.pubkey)}
-        <div class="post-info">
-          <span>${date}</span>
-          <span>${postTypeLabel}</span>
-        </div>
-        ${postContentHtml}
-      </div>
-    `;
-    relatedEventsList.innerHTML += html;
-  });
-
-  relatedEventsSection.style.display = 'block';
-  console.log('関連イベントのレンダリングが完了しました');
+    
+    relatedEventsSection.style.display = 'block';
+    console.log('関連イベントのレンダリングが完了しました');
 }
 
 function getPostTypeLabel(kind) {
