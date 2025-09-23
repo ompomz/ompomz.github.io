@@ -484,103 +484,79 @@ async function createNostrCard(nostrId) {
 }
 
 async function renderEventDetail(nostrId) {
-  showStatus('イベントデータを取得中...');
-  console.log(`イベント詳細の取得を開始: ${nostrId}`);
-  try {
-    const decoded = window.NostrTools.nip19.decode(nostrId);
-    const relays = (decoded.data.relays && decoded.data.relays.length > 0) ? decoded.data.relays : FALLBACK_RELAYS;
-    const until = Math.floor(Date.now() / 1000);
-    let eventId;
-    let filters = {};
+    showStatus('イベントデータを取得中...');
+    console.log(`イベント詳細の取得を開始: ${nostrId}`);
+    try {
+        const decoded = window.NostrTools.nip19.decode(nostrId);
+        const relays = (decoded.data.relays && decoded.data.relays.length > 0) ? decoded.data.relays : FALLBACK_RELAYS;
+        const until = Math.floor(Date.now() / 1000);
+        let eventId;
+        let filters = {};
+        switch (decoded.type) {
+            case 'note':
+            case 'nevent':
+                eventId = decoded.data.id || decoded.data;
+                filters = { ids: [eventId] };
+                console.log('note/nevent IDを検出');
+                break;
+            case 'naddr':
+                eventId = decoded.data.id;
+                filters = { authors: [decoded.data.pubkey], kinds: [decoded.data.kind], '#d': [decoded.data.identifier] };
+                console.log('naddr IDを検出');
+                break;
+            default:
+                showStatus('エラー: 無効なID形式です。');
+                console.error('無効なID形式です:', decoded.type);
+                return;
+        }
 
-    switch (decoded.type) {
-      case 'note':
-      case 'nevent':
-        eventId = decoded.data.id || decoded.data;
-        filters = {
-          ids: [eventId]
-        };
-        console.log('note/nevent IDを検出');
-        break;
-      case 'naddr':
-        eventId = decoded.data.id;
-        filters = {
-          authors: [decoded.data.pubkey],
-          kinds: [decoded.data.kind],
-          '#d': [decoded.data.identifier]
-        };
-        console.log('naddr IDを検出');
-        break;
-      default:
-        showStatus('エラー: 無効なID形式です。');
-        console.error('無効なID形式です:', decoded.type);
-        return;
+        const mainEventPromise = pool.get(relays, { ...filters, until: until, limit: 1 });
+        const relatedEventsPromise = pool.list(relays, [{ '#e': [eventId], kinds: [1, 6, 7, 16], until: until }]);
+        console.log('メインイベントと関連イベントのデータを同時に取得中...');
+        const [mainEvent, relatedEvents] = await Promise.all([mainEventPromise, relatedEventsPromise]);
+
+        if (!mainEvent) {
+            showStatus('イベントが見つかりませんでした');
+            console.warn('メインイベントが見つかりませんでした。');
+            return;
+        }
+
+        console.log(`メインイベントが見つかりました: kind=${mainEvent.kind}`);
+
+        // ここを修正・整理します。すべての絵文字を一つのループで収集します。
+        const allEventsWithTags = [mainEvent, ...relatedEvents];
+        allEventsWithTags.forEach(event => {
+            event.tags.filter(t => t[0] === 'emoji').forEach(([_, shortcode, url]) => {
+                if (!customEmojiMap.has(`:${shortcode}:`)) {
+                    customEmojiMap.set(`:${shortcode}:`, url);
+                }
+            });
+        });
+
+        const pubkeysToFetch = new Set();
+        pubkeysToFetch.add(mainEvent.pubkey);
+        relatedEvents.forEach(e => pubkeysToFetch.add(e.pubkey));
+        console.log(`関連プロフィールをキャッシュに読み込み中: ${pubkeysToFetch.size}件`);
+        await fetchProfiles(Array.from(pubkeysToFetch));
+
+        renderMainEvent(mainEvent);
+
+        const reactions = relatedEvents.filter(e => e.kind === 7);
+        const posts = relatedEvents.filter(e => e.kind === 1);
+        const reposts = relatedEvents.filter(e => e.kind === 6);
+        const quotes = relatedEvents.filter(e => e.kind === 16);
+
+        if (reactions.length > 0) renderReactions(reactions, customEmojiMap);
+        if (posts.length > 0 || reposts.length > 0 || quotes.length > 0) {
+            renderRelatedEvents(posts, reposts, quotes);
+        }
+
+        showStatus('');
+        console.log('すべての処理が完了しました。');
+    } catch (err) {
+        console.error('イベントの取得中にエラーが発生しました:', err);
+        showStatus('イベントの取得中にエラーが発生しました。');
     }
-
-    const mainEventPromise = pool.get(relays, {
-      ...filters,
-      until: until,
-      limit: 1
-    });
-    const relatedEventsPromise = pool.list(relays, [{
-      '#e': [eventId],
-      kinds: [1, 6, 7, 16],
-      until: until
-    }]);
-
-    console.log('メインイベントと関連イベントのデータを同時に取得中...');
-    const [mainEvent, relatedEvents] = await Promise.all([mainEventPromise, relatedEventsPromise]);
-
-    if (!mainEvent) {
-      showStatus('イベントが見つかりませんでした');
-      console.warn('メインイベントが見つかりませんでした。');
-      return;
-    }
-
-    console.log(`メインイベントが見つかりました: kind=${mainEvent.kind}`);
-   
-   const allEventsWithTags = [mainEvent, ...relatedEvents];
-   allEventsWithTags.forEach(event => {
-    event.tags.filter(t => t[0] === 'emoji').forEach(([_, shortcode, url]) => 
-     if (!customEmojiMap.has(`:${shortcode}:`)) {
-     customEmojiMap.set(`:${shortcode}:`, url);
-    }
-   });
-  });
- 
-    const reactionEmojis = relatedEvents.filter(e => e.kind === 7).flatMap(e => e.tags.filter(t => t[0] === 'emoji'));
-    reactionEmojis.forEach(([_, shortcode, url]) => {
-      if (!customEmojiMap.has(`:${shortcode}:`)) {
-        customEmojiMap.set(`:${shortcode}:`, url);
-      }
-    });
-
-    const pubkeysToFetch = new Set();
-    pubkeysToFetch.add(mainEvent.pubkey);
-    relatedEvents.forEach(e => pubkeysToFetch.add(e.pubkey));
-
-    console.log(`関連プロフィールをキャッシュに読み込み中: ${pubkeysToFetch.size}件`);
-    await fetchProfiles(Array.from(pubkeysToFetch));
-
-    renderMainEvent(mainEvent);
-
-    const reactions = relatedEvents.filter(e => e.kind === 7);
-    const posts = relatedEvents.filter(e => e.kind === 1);
-    const reposts = relatedEvents.filter(e => e.kind === 6);
-    const quotes = relatedEvents.filter(e => e.kind === 16);
-
-    if (reactions.length > 0) renderReactions(reactions, customEmojiMap);
-    if (posts.length > 0 || reposts.length > 0 || quotes.length > 0) {
-      renderRelatedEvents(posts, reposts, quotes);
-    }
-
-    showStatus('');
-    console.log('すべての処理が完了しました。');
-
-  } catch (err) {
-    console.error('イベントの取得中にエラーが発生しました:', err);
-    showStatus('イベントの取得中にエラーが発生しました。');
-  }
 }
 
 async function renderProfileDetail(nostrId) {
