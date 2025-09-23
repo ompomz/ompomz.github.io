@@ -89,9 +89,12 @@
 <script>
  function goBack(){if(window.history.length>1){window.history.back()}else{window.location.href='https://ompomz.github.io/tweetsrecap/tweet'}}
  function copyUrl(){navigator.clipboard.writeText(window.location.href).then(()=>{alert('URLがコピーされました！')}).catch(err=>{console.error('URLのコピーに失敗しました:',err);alert('URLのコピーに失敗しました。')})}
- const mainEventContainer=document.getElementById('main-event');const statusElement=document.getElementById('status');const reactionsSection=document.getElementById('reactions-section');const reactionsList=document.getElementById('reactions-list');const relatedEventsSection=document.getElementById('related-events-section');const relatedEventsList=document.getElementById('related-events-list');const FALLBACK_RELAYS=['wss://relay.nostr.band','wss://nos.lol'];const DEFAULT_PROFILE_IMAGE='https://ompomz.github.io/favicon.ico';const pool=new window.NostrTools.SimplePool();const userProfiles={};FALLBACK_RELAYS.forEach(url=>{pool.ensureRelay(url).then(relay=>{relay.on('connect',()=>console.log(`✅ リレーに接続しました: ${url}`));relay.on('disconnect',()=>console.warn(`⚠️ リレーから切断されました: ${url}`));relay.on('error',()=>console.error(`❌ リレー接続エラー: ${url}`))}).catch(err=>{console.error(`接続プールの設定中にエラーが発生しました: ${url}`,err)})});function showStatus(message){statusElement.textContent=message;if(message){statusElement.classList.remove('hidden')}else{statusElement.classList.add('hidden')}}
+ const mainEventContainer=document.getElementById('main-event');const statusElement=document.getElementById('status');const reactionsSection=document.getElementById('reactions-section');const reactionsList=document.getElementById('reactions-list');const relatedEventsSection=document.getElementById('related-events-section');const relatedEventsList=document.getElementById('related-events-list');const FALLBACK_RELAYS=['wss://yabu.me','wss://r.kojira.io'];
+const DEFAULT_PROFILE_IMAGE='https://ompomz.github.io/favicon.ico';const pool=new window.NostrTools.SimplePool();const userProfiles={};FALLBACK_RELAYS.forEach(url=>{pool.ensureRelay(url).then(relay=>{relay.on('connect',()=>console.log(`✅ リレーに接続しました: ${url}`));relay.on('disconnect',()=>console.warn(`⚠️ リレーから切断されました: ${url}`));relay.on('error',()=>console.error(`❌ リレー接続エラー: ${url}`))}).catch(err=>{console.error(`接続プールの設定中にエラーが発生しました: ${url}`,err)})});function showStatus(message){statusElement.textContent=message;if(message){statusElement.classList.remove('hidden')}else{statusElement.classList.add('hidden')}}
  function escapeHtml(str){if(!str)return'';return str.replace(/[&<>"']/g,function(match){const escape={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};return escape[match]})}
  function createNostrLink(nip19){try{const decoded=window.NostrTools.nip19.decode(nip19);const{type,data}=decoded;if(type==='note'||type==='nevent'){return `?id=${nip19}`}else if(type==='npub'||type==='nprofile'){const pubkey=data.id||data;const npub=window.NostrTools.nip19.npubEncode(pubkey);return `?id=${npub}`}else if(type==='naddr'){return `?id=${nip19}`} return'#'}catch(e){console.error('Failed to decode nostr link:',e);return'#'}}
+ 
+const customEmojiMap = new Map();
  
  async function formatPostContent(content, tags){
  console.log('🔄 formatPostContent: 投稿内容のフォーマットを開始します');
@@ -116,11 +119,10 @@
  return `<div data-nostr-id="${nip19}"></div>`;
  });
  
- const customEmojis=tags.filter(t=>t[0]==='emoji');
- customEmojis.forEach(([_,shortcode,url])=>{
- const regex=new RegExp(`:${shortcode}:`,'g');
- formattedContent=formattedContent.replace(regex,`<img src="${url}" alt="${shortcode}" class="custom-emoji custom-emoji-hover">`);
- console.log(`😀 カスタム絵文字を検出・変換: :${shortcode}:`);
+customEmojiMap.forEach((url, shortcode) => {
+  const regex = new RegExp(shortcode, 'g'); // shortcodeは :sleeping_cat: の形式
+  formattedContent = formattedContent.replace(regex,`<img src="${url}" alt="${shortcode}" class="custom-emoji custom-emoji-hover">`);
+  console.log(`😀 カスタム絵文字を検出・変換: :${shortcode}:`);
  });
  
  const tempDiv=document.createElement('div');
@@ -170,11 +172,12 @@
  const date=new Date(event.created_at*1000).toLocaleString();
  const client=event.tags.find(t=>t[0]==='client')?.[1]||'';
  let contentHtml;
- if(event.kind===30023){
- contentHtml=window.marked.parse(event.content)
- }else{
- contentHtml=await formatPostContent(event.content,event.tags)
- }
+if(event.kind === 30023){
+  const markdownHtml = window.marked.parse(event.content);
+  contentHtml = await formatPostContent(markdownHtml, event.tags);
+} else {
+  contentHtml = await formatPostContent(event.content, event.tags);
+}
  const html=` ${createProfileHtml(event.pubkey)} <div class="post-content">${contentHtml}</div> <div class="post-info"> <span>${date}</span> ${client ? `<span>via ${escapeHtml(client)}</span>` : ''} </div> `;mainEventContainer.innerHTML=html;
  console.log('✅ メインイベントのレンダリングが完了しました');
  }
@@ -234,7 +237,10 @@
  
  await fetchProfiles([event.pubkey]);
  const date=new Date(event.created_at*1000).toLocaleString();
- const content=event.content.length>150?escapeHtml(event.content.substring(0,150))+'...':escapeHtml(event.content);
+ const content = await formatPostContent(
+  event.content.length > 150 ? event.content.substring(0,150) + '...' : event.content,
+  event.tags
+);
  const postTypeLabel=getPostTypeLabel(event.kind);
  const eventUrl=`?id=${nostrId}`;
  const eventHtml=` <a href="${eventUrl}"> <div class="related-post-card"> ${createProfileHtml(event.pubkey)} <div class="post-info"> <span>${date}</span> <span>${postTypeLabel}</span> </div> <div class="post-content"> <p class="post-text">${content}</p> </div> </div> </a>`;
@@ -269,10 +275,18 @@
  return
  }
  console.log(`✅ メインイベントが見つかりました: kind=${mainEvent.kind}`);
- 
- const customEmojis=mainEvent.tags.filter(t=>t[0]==='emoji');
- const customEmojiMap=new Map();
- customEmojis.forEach(([_,shortcode,url])=>customEmojiMap.set(`:${shortcode}:`,url));
+  
+const allEmojiTags = [
+  ...mainEvent.tags.filter(t => t[0] === 'emoji'),
+  ...relatedEvents.flatMap(e => e.tags.filter(t => t[0] === 'emoji'))
+];
+
+allEmojiTags.forEach(([_, shortcode, url]) => {
+  if (!customEmojiMap.has(`:${shortcode}:`)) {
+    customEmojiMap.set(`:${shortcode}:`, url);
+  }
+});
+   
  const reactionEmojis=relatedEvents.filter(e=>e.kind===7).flatMap(e=>e.tags.filter(t=>t[0]==='emoji'));
  reactionEmojis.forEach(([_,shortcode,url])=>{if(!customEmojiMap.has(`:${shortcode}:`)){customEmojiMap.set(`:${shortcode}:`,url)}});
  
@@ -331,7 +345,7 @@
  console.log('✅ About meのフォーマットが完了しました。');
  return formattedContent.replace(/\n/g,'<br>')
  }
- const aboutHtml=formatAboutContent(profile.about,profileEvent.tags);
+ const aboutHtml = await formatPostContent(profile.about || '', profile.tags || []);
  const html=` <div class="profile-card"> <div class="profile-header"> <img src="${profile.picture || DEFAULT_PROFILE_IMAGE}" alt="Profile Picture" class="profile-picture"> <div class="profile-info-container"> <h2 class="profile-name">${escapeHtml(profile.name)}</h2> <div class="npub-container"> <span id="npub-text" class="npub-text">${npub}</span> <svg id="copy-npub-icon" class="copy-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect> <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path> </svg> </div> <p class="nip05">${profile.nip05 ? escapeHtml(profile.nip05) : 'NIP-05未設定'}</p> </div> </div> <p class="about-text">${aboutHtml}</p> </div> `;mainEventContainer.innerHTML=html;const copyIcon=document.getElementById('copy-npub-icon');const npubText=document.getElementById('npub-text');copyIcon.onclick=async()=>{try{await navigator.clipboard.writeText(npub);alert('npubがクリップボードにコピーされました！')}catch(err){console.error('npubのコピーに失敗しました:',err);alert('npubのコピーに失敗しました。')}};showStatus('');
  console.log('🎉 プロフィール詳細の表示が完了しました。');
  }catch(err){
