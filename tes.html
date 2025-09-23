@@ -439,89 +439,80 @@ function getPostTypeLabel(kind) {
 // --------------------------------------------------
 
 async function createNostrCard(nostrId) {
-  console.log(`📦 Nostrカードを生成中: ${nostrId}`);
-  let decoded;
-  try {
-    decoded = window.NostrTools.nip19.decode(nostrId);
-  } catch (e) {
-    console.error(`❌ 無効なNostr ID: ${nostrId}`, e);
-    return `<div class="error-card">無効なNostr ID</div>`;
-  }
-
-  const relays = (decoded.data.relays && decoded.data.relays.length > 0) ? decoded.data.relays : FALLBACK_RELAYS;
-  const until = Math.floor(Date.now() / 1000);
-  let event;
-
-  if (decoded.type === 'npub' || decoded.type === 'nprofile') {
-    console.log(`👤 プロフィールカードを生成中: ${decoded.data.id}`);
-    const pubkey = decoded.data.id || decoded.data;
-    const profileEvent = await pool.get(relays, {
-      kinds: [0],
-      authors: [pubkey],
-      until: until,
-      limit: 1
-    });
-
-    if (profileEvent) {
-      const profile = JSON.parse(profileEvent.content);
-      const npub = window.NostrTools.nip19.npubEncode(pubkey);
-      const profileHtml = `
-        <a href="?id=${npub}">
-          <div class="related-post-card">
-            ${createProfileHtml(pubkey)}
-            <div class="post-info">
-              <span>${npub.substring(0, 8) + '...' + npub.slice(-4)}</span>
-            </div>
-            <div class="post-content">
-              <p class="post-text">${escapeHtml(profile.about || '')}</p>
-            </div>
-          </div>
-        </a>
-      `;
-      console.log('✅ プロフィールカード生成完了');
-      return profileHtml;
+    console.log(`Nostrカードを生成中: ${nostrId}`);
+    let decoded;
+    try {
+        decoded = window.NostrTools.nip19.decode(nostrId);
+    } catch (e) {
+        console.error(`無効なNostr ID: ${nostrId}`, e);
+        return `<div class="error-card">無効なNostr ID</div>`;
     }
 
-  } else if (decoded.type === 'note' || decoded.type === 'nevent') {
-    console.log(`📝 イベントカードを生成中: ${decoded.data.id}`);
-    const eventId = decoded.data.id || decoded.data;
-    event = await pool.get(relays, {
-      ids: [eventId],
-      until: until,
-      limit: 1
-    });
-  } else {
-    console.warn(`⚠️ 対応していないIDタイプ: ${decoded.type}`);
-    return `<div class="error-card">対応していないIDタイプです</div>`;
-  }
+    const relays = (decoded.data.relays && decoded.data.relays.length > 0) ? decoded.data.relays : FALLBACK_RELAYS;
+    const until = Math.floor(Date.now() / 1000);
+    let event;
 
-  if (!event) {
-    console.warn(`⚠️ イベントが見つかりませんでした: ${nostrId}`);
-    return `<div class="related-post-card">イベントが見つかりませんでした</div>`;
-  }
+    if (decoded.type === 'npub' || decoded.type === 'nprofile') {
+        console.log(`プロフィールカードを生成中: ${decoded.data.id}`);
+        const pubkey = decoded.data.id || decoded.data;
+        const profileEvent = await pool.get(relays, { kinds: [0], authors: [pubkey], until: until, limit: 1 });
+        if (profileEvent) {
+            const profile = JSON.parse(profileEvent.content);
+            const npub = window.NostrTools.nip19.npubEncode(pubkey);
+            const profileHtml = `
+                <a href="?id=${npub}">
+                    <div class="related-post-card">
+                        ${createProfileHtml(pubkey)}
+                        <div class="post-info">
+                            <span>${npub.substring(0, 8) + '...' + npub.slice(-4)}</span>
+                        </div>
+                        <div class="post-content">
+                            <p class="post-text">${escapeHtml(profile.about || '')}</p>
+                        </div>
+                    </div>
+                </a>`;
+            console.log('プロフィールカード生成完了');
+            return profileHtml;
+        }
+    } else if (decoded.type === 'note' || decoded.type === 'nevent') {
+        console.log(`イベントカードを生成中: ${decoded.data.id}`);
+        const eventId = decoded.data.id || decoded.data;
+        event = await pool.get(relays, { ids: [eventId], until: until, limit: 1 });
+    } else {
+        console.warn(`対応していないIDタイプ: ${decoded.type}`);
+        return `<div class="error-card">対応していないIDタイプです</div>`;
+    }
 
-  await fetchProfiles([event.pubkey]);
-  const date = new Date(event.created_at * 1000).toLocaleString();
-  const content = event.content.length > 150 ? escapeHtml(event.content.substring(0, 150)) + '...' : escapeHtml(event.content);
-  const postTypeLabel = getPostTypeLabel(event.kind);
-  const eventUrl = `?id=${nostrId}`;
+    if (!event) {
+        console.warn(`イベントが見つかりませんでした: ${nostrId}`);
+        return `<div class="related-post-card">イベントが見つかりませんでした</div>`;
+    }
 
-  const eventHtml = `
-    <a href="${eventUrl}">
-      <div class="related-post-card">
-        ${createProfileHtml(event.pubkey)}
-        <div class="post-info">
-          <span>${date}</span>
-          <span>${postTypeLabel}</span>
-        </div>
-        <div class="post-content">
-          <p class="post-text">${content}</p>
-        </div>
-      </div>
-    </a>
-  `;
-  console.log('✅ イベントカード生成完了');
-  return eventHtml;
+    await fetchProfiles([event.pubkey]);
+    const date = new Date(event.created_at * 1000).toLocaleString();
+
+    const content = await formatPostContent(
+        event.content.length > 150 ? event.content.substring(0, 150) + '...' : event.content,
+        event.tags
+    );
+
+    const postTypeLabel = getPostTypeLabel(event.kind);
+    const eventUrl = `?id=${nostrId}`;
+    const eventHtml = `
+        <a href="${eventUrl}">
+            <div class="related-post-card">
+                ${createProfileHtml(event.pubkey)}
+                <div class="post-info">
+                    <span>${date}</span>
+                    <span>${postTypeLabel}</span>
+                </div>
+                <div class="post-content">
+                    <p class="post-text">${content}</p>
+                </div>
+            </div>
+        </a>`;
+    console.log('イベントカード生成完了');
+    return eventHtml;
 }
 
 // --------------------------------------------------
