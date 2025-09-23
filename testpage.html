@@ -284,19 +284,32 @@ async function renderMainEvent(event) {
   console.log('メインイベントのレンダリングが完了しました');
 }
 
-function renderReactions(reactions, customEmojiMap) {
+// renderReactions関数を完全に以下のコードに置き換えてください
+async function renderReactions(reactions) { // customEmojiMapはグローバルなので引数から削除
     console.log(`リアクションのレンダリングを開始: ${reactions.length}件`);
     const reactionGroups = new Map();
-    reactions.forEach(reaction => {
-        const emoji = reaction.content.trim();
+
+    // リアクションのコンテンツから絵文字を抽出し、グループ化
+    for (const reaction of reactions) {
+        // formatPostContentはPromiseを返すので、awaitで待機
+        const formattedContent = await formatPostContent(reaction.content, reaction.tags);
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = formattedContent;
+        const emojiImg = tempDiv.querySelector('.custom-emoji, .reaction-emoji');
+        
+        let emoji = reaction.content.trim(); // 変換前の元の絵文字コード
+        if (emojiImg) {
+            emoji = emojiImg.src || emojiImg.textContent.trim();
+        }
+
         if (!reactionGroups.has(emoji)) {
             reactionGroups.set(emoji, { count: 0, pubkeys: new Set() });
         }
         const group = reactionGroups.get(emoji);
         group.count++;
         group.pubkeys.add(reaction.pubkey);
-    });
-
+    }
+    
     reactionsList.innerHTML = '';
     
     for (const [emoji, group] of reactionGroups.entries()) {
@@ -310,26 +323,11 @@ function renderReactions(reactions, customEmojiMap) {
 
         let displayedEmojiHtml;
         const emojiUrl = customEmojiMap.get(emoji);
-        
-        // 絵文字にコロンが付いているか確認
-        if (emoji.startsWith(':') && emoji.endsWith(':')) {
-             const cleanedEmoji = emoji.slice(1, -1);
-             const urlFromMap = customEmojiMap.get(emoji);
-             if (urlFromMap) {
-                 displayedEmojiHtml = `<img src="${urlFromMap}" alt="${cleanedEmoji}" class="reaction-custom-emoji custom-emoji-hover">`;
-             } else {
-                 // マップにない場合は、元々のテキストを表示
-                 displayedEmojiHtml = `<span class="reaction-emoji">${emoji}</span>`;
-             }
+        if (emojiUrl && emojiUrl.trim() !== '') {
+            displayedEmojiHtml = `<img src="${emojiUrl}" alt="${emoji}" class="reaction-custom-emoji custom-emoji-hover">`;
         } else {
-            // カスタム絵文字ではない場合
-            const urlFromMap = customEmojiMap.get(emoji);
-            if (urlFromMap) {
-                 displayedEmojiHtml = `<img src="${urlFromMap}" alt="${emoji}" class="reaction-custom-emoji custom-emoji-hover">`;
-            } else {
-                 const displayedEmoji = emoji === '+' ? '' : emoji;
-                 displayedEmojiHtml = `<span class="reaction-emoji">${displayedEmoji}</span>`;
-            }
+            const displayedEmoji = emoji.startsWith('http') ? `<img src="${emoji}" class="reaction-custom-emoji custom-emoji-hover">` : emoji === '+' ? '' : emoji;
+            displayedEmojiHtml = `<span class="reaction-emoji">${displayedEmoji}</span>`;
         }
 
         const groupHtml = `
@@ -340,7 +338,7 @@ function renderReactions(reactions, customEmojiMap) {
         `;
         reactionsList.innerHTML += groupHtml;
     }
-
+    
     reactionsSection.style.display = 'block';
     console.log('リアクションのレンダリングが完了しました');
 }
@@ -491,7 +489,7 @@ async function createNostrCard(nostrId) {
   return eventHtml;
 }
 
-async function renderEventDetail(nostrId) {
+ async function renderEventDetail(nostrId) {
     showStatus('イベントデータを取得中...');
     console.log(`イベント詳細の取得を開始: ${nostrId}`);
     try {
@@ -553,8 +551,9 @@ async function renderEventDetail(nostrId) {
         const reposts = relatedEvents.filter(e => e.kind === 6);
         const quotes = relatedEvents.filter(e => e.kind === 16);
 
+        // renderReactionsをawaitで呼び出すように変更
         if (reactions.length > 0) {
-            await renderReactions(reactions, customEmojiMap);
+            await renderReactions(reactions);
         }
         if (posts.length > 0 || reposts.length > 0 || quotes.length > 0) {
             await renderRelatedEvents(posts, reposts, quotes);
