@@ -625,7 +625,6 @@ async function sendLikeEvent(targetEventId, targetPubkey) {
       const signedEvent = await window.nostrSigner.signEvent(likeEvent);
       relayWS.send(JSON.stringify(["EVENT", signedEvent]));
       likedEventIds.add(targetEventId);
-      refreshTimeline();
       alert("ふぁぼった！")
     } catch (err) {
       console.error("NIP-07署名に失敗:", err);
@@ -651,7 +650,6 @@ async function sendLikeEvent(targetEventId, targetPubkey) {
       const signedEvent = window.NostrTools.finalizeEvent(likeEvent, seckey);
       relayWS.send(JSON.stringify(["EVENT", signedEvent]));
       likedEventIds.add(targetEventId);
-      refreshTimeline();
       alert('ふぁぼった！')
     } catch (err) {
       console.error("秘密鍵署名に失敗:", err);
@@ -695,7 +693,7 @@ function onEvent(nostrEv, prepend) {
     if (eTag) {
       likedEventIds.add(eTag[1])
     }
-    refreshTimeline();
+    ;
     return
   }
   if (supportedKinds.indexOf(nostrEv.kind) === -1) {
@@ -707,9 +705,7 @@ function onEvent(nostrEv, prepend) {
   oldestCreatedAt = Math.min(oldestCreatedAt, nostrEv.created_at);
   if (!profiles[nostrEv.pubkey]) {
     fetchProfilesForPubkeys([nostrEv.pubkey])
-  }
-  refreshTimeline()
-}
+  }}
 // タイムラインを初期表示するための新しい関数
 function displayInitialEvents() {
     // 現在表示されている投稿をすべてクリアする
@@ -1053,8 +1049,7 @@ autoUpdateToggle.addEventListener('change', function() {
   }
 });
 flowgazerOnlyCheckbox.addEventListener('change', function() {
-  isFlowgazerOnly = this.checked;
-  refreshTimeline()
+  isFlowgazerOnly = this.checked;  
 });
 showSettingsBtn.addEventListener("click", () => {
   settingsArea.classList.remove("hidden");
