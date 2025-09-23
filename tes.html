@@ -200,6 +200,7 @@ function replaceCustomEmojis(text, customEmojiMap) {
 async function formatPostContent(content, tags) {
   console.log('🔄 formatPostContent: 投稿内容のフォーマットを開始します');
   let formattedContent = escapeHtml(content);
+formattedContent = formattedContent.replace(/\n/g, '<br>');
 
   // URLをリンクまたは画像に変換
   const urlRegex = /\b(https?:\/\/[^\s]+)/g;
@@ -247,7 +248,7 @@ async function formatPostContent(content, tags) {
   }));
 
   console.log('🎉 formatPostContent: 処理完了');
-  return tempDiv.innerHTML.replace(/<br>/g, '\n').replace(/\n/g, '<br>');
+ return tempDiv.innerHTML;
 }
 
 async function fetchProfiles(pubkeys) {
@@ -649,7 +650,8 @@ async function renderProfileDetail(nostrId) {
     function formatAboutContent(content, tags) {
       console.log('📝 About meの内容をフォーマット中...');
       if (!content) return '';
-      let formattedContent = escapeHtml(content);
+     let formattedContent = escapeHtml(content);
+     formattedContent = formattedContent.replace(/\n/g, '<br>');
 
       const customEmojis = tags.filter(t => t[0] === 'emoji');
       const customEmojiMap = new Map();
@@ -671,7 +673,7 @@ async function renderProfileDetail(nostrId) {
       });
 
       console.log('✅ About meのフォーマットが完了しました。');
-      return formattedContent.replace(/\n/g, '<br>');
+      return formattedContent;
     }
 
     const aboutHtml = formatAboutContent(profile.about, profileEvent.tags);
