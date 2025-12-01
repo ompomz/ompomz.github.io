@@ -1,0 +1,88 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-weight: normal;
+    margin: 0;
+    background-color: #f7f7f7;
+    color: #666;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem 0;
+    line-height: 1.5;
+    font-size: 0.9rem;
+}
+
+/* ノートコンテナ: コンテンツの表示エリア */
+.note-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    box-sizing: border-box;
+    flex-grow: 1;
+    text-align: left;
+}
+
+/* タイトル、メタ情報、コンテンツ */
+.note-title {
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+.note-meta {
+    font-size: 0.8rem;
+    color: #999;
+    margin-bottom: 1.5rem;
+}
+
+/* 見出し */
+.note-container h1,
+.note-container h2,
+.note-container h3,
+.note-container h4 {
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    font-weight: 700;
+    color: #666;
+    line-height: 1.2;
+}
+
+/* 段落 */
+.note-container p {
+    margin-bottom: 1.2em;
+}
+
+/* リスト（本文内） */
+.note-container ul,
+.note-container ol {
+    margin: 1em 0;
+    padding-left: 1.5em;
+}
+
+/* リスト（目次など） */
+.note-list {
+    list-style: none;
+    padding: 0;
+}
+
+.note-list li {
+    margin-bottom: 0.75rem;
+}
+
+.note-list a {
+    text-decoration: none;
+    color: #66b3ff;
+    font-weight: 600;
+}
+
+.note-list a:hover {
+    text-decoration: underline;
+}
+
+/* 引用 */
+.note-container blockquote {
+    border-left: 4px solid #999;
+    padding-left: 10px;
+    margin: 1em 0;
+}

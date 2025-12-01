@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>mynote</title>  
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="https://ompomz.github.io/note/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div class="note-container" id="content"></div>
+  <script>
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("id");
+  const content = document.getElementById("content");
+
+  if (id) {
+    fetch(`note/${id}.md`)
+      .then(res => res.text())
+      .then(md => { content.innerHTML = marked.parse(md); })
+      .catch(() => { content.innerHTML = "<p>記事が見つかりません。</p>"; });
+  } else {
+    // idが無いときの表示
+    content.innerHTML = `
+      <h2>mynote</h2>
+      <ul>
+        <li><a href="?id=251201">2025/12/01</a></li>
+        <!-- ここに記事を追加 -->
+      </ul>
+    `;
+  }
+</script>
+</body>
+</html>
