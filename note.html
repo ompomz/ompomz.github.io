@@ -23,14 +23,18 @@
         // MarkdownをHTMLに変換
         const articleHtml = marked.parse(md);
 
-        // 「もどる」リンクを作成（`?id=...`のない元のページに戻る）
-        const backLink = '<p><a href="./">＜ もどる</a></p>';
+        // 「もどる」リンクを作成
+        const backLink = '<p><a href="#" onclick="history.back(); return false;">＜ もどる</a></p>';
 
-        content.innerHTML = articleHtml + backLink;
+        // 記事コンテンツ、罫線、もどるリンクの順に結合してHTMLに設定
+        content.innerHTML = articleHtml + '<hr>' + backLink; // ← この行を変更
+
       })
       .catch(() => { 
         content.innerHTML = "<p>記事が見つかりません。</p>"; 
-        // 記事が見つからなかった場合にもリンクを表示したい場合はここに追記
+        // 記事が見つからなかった場合にもリンクを表示
+        const backLink = '<p><a href="#" onclick="history.back(); return false;">＜ もどる</a></p>';
+        content.innerHTML += backLink;
       });
   } else {
     // idが無いときの表示

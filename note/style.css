@@ -9,7 +9,6 @@ body {
     flex-direction: column !important;
     align-items: flex-start !important;
     padding: 0.5rem 0;
-    line-height: 1.5;
     font-size: 0.9rem;
 }
 
@@ -45,7 +44,6 @@ body {
 /* タイトル、メタ情報、コンテンツ */
 .note-title {
     margin-bottom: 1rem;
-    line-height: 1.2;
 }
 
 .note-meta {
@@ -62,7 +60,6 @@ body {
     margin-top: 1em;
     margin-bottom: 0.5em;
     color: #666;
-    line-height: 1.3;
 }
 
 /* 本文が 0.9rem を基準 */
@@ -134,4 +131,25 @@ body {
 
 .note-container blockquote p {
   margin:0;
+}
+
+ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+li::before {
+  content: "・";
+  margin-right: 0.5em;
+}
+
+li a {
+  text-decoration: none;
+  color: #666;
+  font-weight: normal;
+}
+
+li a:hover {
+  color: #0077cc;
+  text-decoration: underline;
 }
