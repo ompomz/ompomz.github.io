@@ -6,6 +6,7 @@ body {
     color: #666;
     min-height: 100vh;
     display: flex;
+    max-width: 56rem;
     flex-direction: column !important;
     align-items: flex-start !important;
     padding: 0.5rem 0;
