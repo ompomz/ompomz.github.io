@@ -145,11 +145,6 @@ ul {
 
 .note-container li::before {
   content: "・";
-  position: absolute;
-  left: 0;
-  top: 0.1em;
-  font-size: 1em;
-  color: #333;
 }
 
 li a {
