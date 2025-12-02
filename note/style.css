@@ -1,16 +1,27 @@
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    font-weight: normal;
+html, body {
     margin: 0;
+    padding: 0;
+    width: 100%;
+    box-sizing: border-box; 
+}
+
+body {
+    margin: 0;
+    padding: 0.5rem 0;        /* 上下にパディング */
+    max-width: 56rem;         /* 最大幅の指定（中央配置と併用） */
+    min-height: 100vh;        /* 少なくともビューポートの高さは確保 */
+    display: flex;            /* Flexboxコンテナに */
+    flex-direction: column;   /* 要素を縦に並べる */
+    align-items: flex-start;  /* Flexboxアイテムを左寄せにする */
+
+    /* 2. 背景と色 */
     background-color: #f7f7f7;
     color: #666;
-    min-height: 100vh;
-    display: flex;
-    max-width: 56rem;
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    padding: 0.5rem 0;
+
+    /* 3. フォント */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     font-size: 0.9rem;
+    font-weight: normal;
 }
 
 /* ノートコンテナ: コンテンツの表示エリア */
