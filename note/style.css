@@ -58,7 +58,7 @@ body {
 .note-container h3,
 .note-container h4 {
     margin-top: 1em;
-    margin-bottom: 0.5em;
+    margin-bottom: 1em;
     color: #666;
 }
 
@@ -92,7 +92,6 @@ body {
 .note-container ul,
 .note-container ol {
     margin: 1em 0;
-    padding-left: 1.5em;
 }
 
 /* 区切り線 (hr) のスタイル */
