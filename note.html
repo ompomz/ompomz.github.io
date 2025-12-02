@@ -26,8 +26,7 @@
         // 「もどる」リンクを作成（`?id=...`のない元のページに戻る）
         const backLink = '<p><a href="./">＜ もどる</a></p>';
 
-        // コンテンツにリンクを追加（今回は記事の**上**に追加）
-        content.innerHTML = backLink + articleHtml; 
+        content.innerHTML = articleHtml + backLink;
       })
       .catch(() => { 
         content.innerHTML = "<p>記事が見つかりません。</p>"; 

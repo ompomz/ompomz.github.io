@@ -208,3 +208,53 @@ body {
   .product-meta-info { font-size: .75em; }
   .footer-contact { margin-top: 30px; padding: 15px; font-size: .8em; }
 }
+
+.note-link-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  padding: 15px 20px;
+  border-radius: 8px;
+  text-decoration: none;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  color: #333;
+  box-shadow: 0 2px 4px rgba(0,0,0,.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.note-link-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,.1); /* hover時も軽め */
+}
+
+.note-main-content {
+  display: flex;
+  align-items: center;
+}
+
+.note-title-icon {
+  font-size: 1.5em;
+  margin-right: 12px;
+}
+
+.note-text-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.note-title {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 4px;
+}
+
+.note-description {
+  font-size: 0.9em;
+  color: #666;
+  line-height: 1.3;
+}
