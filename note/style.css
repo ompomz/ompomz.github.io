@@ -138,9 +138,18 @@ ul {
   padding-left: 0;
 }
 
-li::before {
+.note-container li {
+  list-style-type: none;
+  padding-left: 1em;
+}
+
+.note-container li::before {
   content: "・";
-  margin-right: 0.5em;
+  position: absolute;
+  left: 0;
+  top: 0.1em;
+  font-size: 1em;
+  color: #333;
 }
 
 li a {
