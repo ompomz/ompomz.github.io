@@ -8,8 +8,10 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
-  <div class="note-container" id="content"></div>
-  <script>
+<div id="header-placeholder"></div>
+<div class="note-container" id="content"></div>
+<script src="https://ompomz.github.io/header/loadHeader.js"></script>
+<script>
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
   const content = document.getElementById("content");
@@ -17,15 +19,27 @@
   if (id) {
     fetch(`note/${id}.md`)
       .then(res => res.text())
-      .then(md => { content.innerHTML = marked.parse(md); })
-      .catch(() => { content.innerHTML = "<p>記事が見つかりません。</p>"; });
+      .then(md => { 
+        // MarkdownをHTMLに変換
+        const articleHtml = marked.parse(md);
+
+        // 「もどる」リンクを作成（`?id=...`のない元のページに戻る）
+        const backLink = '<p><a href="./">＜ もどる</a></p>';
+
+        // コンテンツにリンクを追加（今回は記事の**上**に追加）
+        content.innerHTML = backLink + articleHtml; 
+      })
+      .catch(() => { 
+        content.innerHTML = "<p>記事が見つかりません。</p>"; 
+        // 記事が見つからなかった場合にもリンクを表示したい場合はここに追記
+      });
   } else {
     // idが無いときの表示
     content.innerHTML = `
       <h2>mynote</h2>
       <ul>
-        <li><a href="?id=251201">2025/12/01</a></li>
-        <!-- ここに記事を追加 -->
+        <li><a href="?id=251126">Memories of Nostrasia2025</a></li>
+        <li><a href="?id=251201">test</a></li>
       </ul>
     `;
   }
