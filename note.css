@@ -43,14 +43,11 @@ body {
 .note-container h3 { font-size: 1.2rem; font-weight: bold; }
 .note-container h4 { font-size: 0.9rem; font-weight: normal; }
 .note-container p {
-  margin-bottom: 1.2rem;
+  margin-bottom: 1rem;
 }
 .note-container hr {
   border: none;
   border-top: 1px dashed #999;
-}
-.br-spacer {
-  height: 0.25rem;
 }
 .note-container blockquote {
   border-left: 4px solid #999;

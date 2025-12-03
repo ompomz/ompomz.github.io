@@ -22,7 +22,7 @@ if (id) {
     .then(md => {
       // カスタムレンダラーを作成
       const renderer = new marked.Renderer();
-      renderer.br = () => '<div class="br-spacer"></div>';
+      renderer.br = () => '</p><p>';
 
       // MarkdownをHTMLに変換（カスタムレンダラーを適用）
       const articleHtml = marked.parse(md, { renderer });
