@@ -79,9 +79,9 @@ body {
 /* --- 記事表示時のリスト設定 (Markdown変換後の ul, ol) --- */
 .note-container ul,
 .note-container ol {
-  margin: 1rem 0;
+  margin: 0;
+  padding: 0;
   list-style-type: none; 
-  padding-left: 0;
 }
 
 /* 記事本文中の li */
