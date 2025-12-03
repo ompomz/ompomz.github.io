@@ -34,8 +34,8 @@ body {
 .note-container h2,
 .note-container h3,
 .note-container h4 {
-  margin-top: 1em;
-  margin-bottom: 1em;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
   color: #666;
 }
 .note-container h1 { font-size: 1.8rem; font-weight: bold; }
@@ -43,11 +43,14 @@ body {
 .note-container h3 { font-size: 1.2rem; font-weight: bold; }
 .note-container h4 { font-size: 0.9rem; font-weight: normal; }
 .note-container p {
-  margin-bottom: 1.2em;
+  margin-bottom: 1.2rem;
 }
 .note-container hr {
   border: none;
   border-top: 1px dashed #999;
+}
+.br-spacer {
+  height: 0.5rem;
 }
 .note-container blockquote {
   border-left: 4px solid #999;
@@ -80,14 +83,14 @@ body {
 /* --- 記事表示時のリスト設定 (Markdown変換後の ul, ol) --- */
 .note-container ul,
 .note-container ol {
-  margin: 1em 0;
+  margin: 1rem 0;
   list-style-type: none; 
   padding-left: 0;
 }
 
 /* 記事本文中の li */
 .note-container li {
-  padding-left: 1em; 
+  padding-left: 0.25rem; 
 }
 
 /* li のリストマーカーを「・」に設定 */
@@ -126,7 +129,7 @@ body {
   padding: 0;
 }
 .note-list li {
-  margin-bottom: .75rem;
+  margin-bottom: .25rem;
 }
 .note-list a {
   font-weight: normal;
