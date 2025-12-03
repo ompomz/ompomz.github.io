@@ -1,52 +1,54 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ompomznote</title>  
-  <link rel="stylesheet" href="./note.css">
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>ompomznote</title>  
+ <link rel="stylesheet" href="./note.css">
+ <script src="https://ompomz.github.io/header/loadHeader.js"></script>
+ <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 <div id="header-placeholder"></div>
 <div class="note-container" id="content"></div>
-<script src="https://ompomz.github.io/header/loadHeader.js"></script>
 <script>
-  const params = new URLSearchParams(window.location.search);
-  const id = params.get("id");
-  const content = document.getElementById("content");
+const params = new URLSearchParams(window.location.search);
+const id = params.get("id");
+const content = document.getElementById("content");
 
-  if (id) {
-    fetch(`note/${id}.md`)
-      .then(res => res.text())
-      .then(md => { 
-        // MarkdownをHTMLに変換
-        const articleHtml = marked.parse(md);
+if (id) {
+  fetch(`note/${id}.md`)
+    .then(res => res.text())
+    .then(md => {
+      // カスタムレンダラーを作成
+      const renderer = new marked.Renderer();
+      renderer.br = () => '<div class="br-spacer"></div>';
 
-        // 「もどる」リンクを作成
-        const backLink = '<p><a href="#" onclick="history.back(); return false;">＜ もどる</a></p>';
+      // MarkdownをHTMLに変換（カスタムレンダラーを適用）
+      const articleHtml = marked.parse(md, { renderer });
 
-        // 記事コンテンツ、罫線、もどるリンクの順に結合してHTMLに設定
-        content.innerHTML = articleHtml + '<hr>' + backLink; // ← この行を変更
+      // 「もどる」リンクを作成
+      const backLink = '<p><a href="#" onclick="history.back(); return false;">＜ もどる</a></p>';
 
-      })
-      .catch(() => { 
-        content.innerHTML = "<p>記事が見つかりません。</p>"; 
-        // 記事が見つからなかった場合にもリンクを表示
-        const backLink = '<p><a href="#" onclick="history.back(); return false;">＜ もどる</a></p>';
-        content.innerHTML += backLink;
-      });
-  } else {
-    // idが無いときの表示
-    content.innerHTML = `
-      <h2>ompomznote</h2>
-      <ul>
-        <li><a href="?id=251126">Memories of Nostrasia2025</a></li>
-        <li><a href="?id=251201">test</a></li>
-        <li><a href="?id=251204">Creating Client with AI</a></li>
-      </ul>
-    `;
-  }
+      // 記事コンテンツ、罫線、もどるリンクの順に結合してHTMLに設定
+      content.innerHTML = articleHtml + '<hr>' + backLink;
+    })
+    .catch(() => {
+      content.innerHTML = "<p>記事が見つかりません。</p>";
+      const backLink = '<p><a href="#" onclick="history.back(); return false;">＜ もどる</a></p>';
+      content.innerHTML += backLink;
+    });
+} else {
+  // idが無いときの表示
+  content.innerHTML = `
+    <h2>ompomznote</h2>
+    <ul>
+      <li><a href="?id=251126">Memories of Nostrasia2025</a></li>
+      <li><a href="?id=251201">test</a></li>
+      <li><a href="?id=251204">Creating Client with AI</a></li>
+    </ul>
+  `;
+}
 </script>
 </body>
 </html>
