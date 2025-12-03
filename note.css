@@ -4,7 +4,6 @@ html,body {
   width: 100%;
   box-sizing: border-box;
 }
-
 body {
   min-height: 100vh;
   background-color: #f7f7f7;
@@ -17,7 +16,6 @@ body {
 /* --- メインコンテナ (.note-container) の設定 --- */
 .note-container {
   max-width: 55rem;
-  line-height: 1.5;
   margin: 0;
   padding: 1.75rem;
 }
@@ -42,12 +40,16 @@ body {
 .note-container h2 { font-size: 1.4rem; font-weight: bold; }
 .note-container h3 { font-size: 1.2rem; font-weight: bold; }
 .note-container h4 { font-size: 0.9rem; font-weight: normal; }
-.note-container p {
-  margin-bottom: 1rem;
-}
+
 .note-container hr {
   border: none;
   border-top: 1px dashed #999;
+  margin-block-start: 0.5rem;
+  margin-block-end: 0.5rem;
+}
+.note-container p {
+  margin-block-start: 0.5rem;
+  margin-block-end: 0.5rem;
 }
 .note-container blockquote {
   border-left: 4px solid #999;
@@ -118,6 +120,8 @@ body {
 /* --- クエリがないとき (リスト表示時) のスタイル --- */
 /* JSで生成される .note-container 直下の ul の中の a をターゲット */
 .note-container > ul a {
+  line-height: 1.5rem;
+  font-size: 1rem;
   font-weight: normal;
   color: #07c;
 }
