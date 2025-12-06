@@ -12,38 +12,46 @@
 <div id="header-placeholder"></div>
 <div class="note-container" id="content"></div>
 <script>
-  function goBack() {
-    const baseUrl = "https://ompomz.github.io/note";
-    const ref = document.referrer;
-
-    if (ref && ref.startsWith(baseUrl)) {
-      history.back();
-    } else if (window.history.length > 1) {
-      history.back();
+const params = new URLSearchParams(window.location.search);
+const id = params.get("id");
+const content = document.getElementById("content");
+function goBackOrHome() {
+    // document.referrer があり、かつ現在のページとは異なる場合に history.back() を実行
+    if (document.referrer && document.referrer !== window.location.href) {
+        history.back();
     } else {
-      window.location.href = baseUrl;
+        // 履歴がない場合は、記事一覧を表示する note.html へ強制的に遷移
+        window.location.href = "./note.html"; 
     }
-    return false;
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  const id = params.get("id");
-  const content = document.getElementById("content");
-
-  if (id) {
+}
+if (id) {
     fetch(`note/${id}.md`)
-      .then(res => res.text())
-      .then(md => { 
-        const articleHtml = marked.parse(md);
-        const backLink = '<p><a href="#" onclick="return goBack();">＜ もどる</a></p>';
-        content.innerHTML = articleHtml + '<hr>' + backLink;
-      })
-      .catch(() => { 
-        content.innerHTML = "<p>記事が見つかりません。</p>"; 
-        const backLink = '<p><a href="#" onclick="return goBack();">＜ もどる</a></p>';
-        content.innerHTML += backLink;
-      });
-  } else {
+        .then(res => res.text())
+        .then(md => {
+            // カスタムレンダラーを作成
+            const renderer = new marked.Renderer();
+            renderer.br = () => '</p><p>';
+
+            // MarkdownをHTMLに変換（カスタムレンダラーを適用）
+            const articleHtml = marked.parse(md, { renderer });
+
+            // 「もどる」リンクを作成し、goBackOrHome() を適用
+            const backLink = '<p><a href="#" onclick="goBackOrHome(); return false;">＜ もどる</a></p>';
+            
+            // 記事コンテンツ、罫線、「もどる」リンクの順に結合してHTMLに設定
+            content.innerHTML = articleHtml + '<hr>' + backLink;
+
+        })
+        .catch(() => {
+            content.innerHTML = "<p>記事が見つかりません。</p>";
+            
+            // エラー時にも「もどる」リンクを表示
+            const backLink = '<p><a href="#" onclick="goBackOrHome(); return false;">＜ もどる</a></p>';
+            
+            content.innerHTML += backLink;
+        });
+} else {
+    // idが無いときの表示 (リスト画面)
     content.innerHTML = `
         <h2>ompomznote</h2>
         <ul>
@@ -52,7 +60,7 @@
           <li><a href="?id=251204">Creating Client with AI</a></li>
         </ul>
     `;
-  }
+}
 </script>
 </body>
 </html>
