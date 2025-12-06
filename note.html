@@ -11,51 +11,77 @@
 <body>
  <div id="header-placeholder"></div>
  <div class="note-container" id="content"></div>
- <script>
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("id");
-    const content = document.getElementById("content");
-    function goBackOrHome(event) {
-        if (event) {
-            event.preventDefault();
-        }
-        if (document.referrer && document.referrer !== window.location.href) {
-            history.back();
-        } else {
-            window.location.href = "./note";
-        }
+<script>
+const params = new URLSearchParams(window.location.search);
+const id = params.get("id");
+const content = document.getElementById("content");
+
+function goBackOrHome(event){
+    if (event) event.preventDefault();
+
+    const ref = document.referrer;
+    const isSameOrigin = ref && ref.startsWith(location.origin);
+
+    // 新しいタブor直打ち用
+    const isNoteToNewTab =
+        !ref &&
+        window.history.length === 1 &&
+        location.search.includes("id=");
+
+    // A. note.html → 詳細
+    if (isSameOrigin && ref.includes("note.html")) {
+        location.href = "./note.html";
+        return;
     }
-    if (id) {
-        fetch(`note/${id}.md`)
+
+    // B. note.html の新しいタブ or 直打ち
+    if (isNoteToNewTab) {
+        location.href = "./note.html";
+        return;
+    }
+
+    // C. 外部サイト → 詳細ページ（戻る）
+    if (ref && !isSameOrigin) {
+        history.back();
+        return;
+    }
+
+    // D. 履歴あり → 普通に戻る
+    if (window.history.length > 1) {
+        history.back();
+        return;
+    }
+
+    // E. URL直打ちなど
+    location.href = "./note.html";
+}
+
+if (id) {
+    fetch(`note/${id}.md`)
         .then(res => res.text())
         .then(md => {
-            // カスタムレンダラーを作成
             const renderer = new marked.Renderer();
             renderer.br = () => '</p><p>';
-            // MarkdownをHTMLに変換（カスタムレンダラーを適用）
             const articleHtml = marked.parse(md, { renderer });
-            // 「もどる」リンクを作成し、goBackOrHome() を適用
-            const backLink = '<p><a href="./note" onclick="goBackOrHome(event); return false;">＜ もどる</a></p>';            
-            // 記事コンテンツ、罫線、「もどる」リンクの順に結合してHTMLに設定
+
+            const backLink = '<p><a href="./note.html" onclick="goBackOrHome(event);">＜ もどる</a></p>';
             content.innerHTML = articleHtml + '<hr>' + backLink;
         })
         .catch(() => {
-            content.innerHTML = "<p>記事が見つかりません。</p>";            
-            // エラー時にも「もどる」リンクを表示
-            const backLink = '<p><a href="./note" onclick="goBackOrHome(event); return false;">＜ もどる</a></p>';            
+            content.innerHTML = "<p>記事が見つかりません。</p>";
+            const backLink = '<p><a href="./note.html" onclick="goBackOrHome(event);">＜ もどる</a></p>';
             content.innerHTML += backLink;
         });
-    } else {
-    // idが無いときの表示 (リスト画面)
+} else {
     content.innerHTML = `
-    <h2>ompomznote</h2>
-    <ul>
-        <li><a href="?id=251126">Memories of Nostrasia2025</a></li>
-        <li><a href="?id=251201">test</a></li>
-        <li><a href="?id=251204">Creating Client with AI</a></li>
+        <h2>ompomznote</h2>
+        <ul>
+            <li><a href="?id=251126">Memories of Nostrasia2025</a></li>
+            <li><a href="?id=251201">test</a></li>
+            <li><a href="?id=251204">Creating Client with AI</a></li>
         </ul>
-        `;
-        }
- </script>
+    `;
+}
+</script>
 </body>
 </html>
