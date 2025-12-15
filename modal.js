@@ -34,6 +34,13 @@ document.addEventListener('DOMContentLoaded', () => {
             modal.style.display = 'none';
         }
     });
+    // 【追記】Escキーで閉じる処理
+    document.addEventListener('keydown', (event) => {
+        if (event.key === "Escape" && modal.style.display === "block") {
+            // modal.js 内で定義した modal 変数と、閉じるためのロジックを使用
+            modal.style.display = 'none';
+        }
+    });
 });
 
 // この関数は外部から呼び出せるようにグローバルに残しておく
